@@ -5,6 +5,8 @@
 
 ---
 
+Only availble in Linux, expecting Mac OS shortly
+
 ## English
 
 ### Features
@@ -138,6 +140,8 @@ create_srt_from_transcription(content, 'transcription.srt')
 MIT License - See [LICENSE](LICENSE) for details.
 
 ---
+
+目前只有Linux版本，Mac OS版本開發中
 
 ## 繁體中文
 
