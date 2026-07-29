@@ -5,7 +5,7 @@
 
 ---
 
-Only availble in Linux, expecting Mac OS shortly
+## Only availble in Linux, expecting Mac OS shortly
 
 ## English
 
@@ -141,7 +141,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
-目前只有Linux版本，Mac OS版本開發中
+## 目前只有Linux版本，Mac OS版本開發中
 
 ## 繁體中文
 
