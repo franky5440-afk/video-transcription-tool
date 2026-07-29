@@ -1,0 +1,24 @@
+# 輸出與媒體檔
+output/
+*.webm
+*.mp4
+*.mkv
+*.wav
+*.mp3
+
+# 機密
+.env
+.env.*
+*.key
+credentials.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+
+# 系統
+.DS_Store
+*.swp
