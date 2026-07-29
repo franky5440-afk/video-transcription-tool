@@ -37,12 +37,29 @@
 - 安裝、移除、升級系統套件（apt、dpkg、snap）
 - 修改 `/etc` 底下任何檔案
 - 安裝或更換顯示卡驅動、核心、DKMS 模組
-- `git push`、`git reset --hard`、強制覆寫遠端
+- `git push --force`、`git reset --hard`、改寫已推送的歷史、刪除分支
 - 任何會影響開機或網路連線的變更
 - 處理金鑰、憑證、密碼
 - 對外發送請求（API 呼叫、上傳、寄信）
 
 專案目錄內的一般檔案操作不受此限。
+
+### Git 例行操作可自行執行
+
+`git add`、`git commit`、`git push`（推送到既有分支）、`git pull`、建立新分支，都直接做，不用問。
+
+但 **push 之前必須先確認沒有機密外洩**：
+
+```
+git ls-files -z | xargs -0 grep -nE "sk-[A-Za-z0-9_-]{20,}|(api_key|apikey|token|secret|password)[[:space:]]*=[[:space:]]*['\"][^'\"]{16,}"
+
+```
+git log -p | grep -nE "sk-[A-Za-z0-9_-]{20,}"
+
+
+有任何輸出就**停止推送**並回報我。注意要用 `git ls-files` 而非 `grep -r`——後者會掃到 `venv/` 等被 gitignore 排除的目錄，產生大量假警報。
+
+commit 訊息要具體描述這次改了什麼，不要寫 "update"、"fix" 這類無資訊的內容。
 
 ---
 
