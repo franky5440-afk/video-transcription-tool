@@ -1,179 +1,163 @@
 #!/usr/bin/env python3
 """
 Test script for P1 fixes verification
+
+Covers:
+- P1-3: main.py must not print a success checkmark when processing fails
+- R2:   the interactive while-loop must terminate on every path
 """
 
 import os
 import sys
-import subprocess
 import io
 from contextlib import redirect_stdout
+from unittest.mock import patch
 
 # Add project root to path
-sys.path.insert(0, '/home/lintzuyang/Opencode/project/website')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from main import process_single_video
+import main
 
-def test_p1_3_failure_handling():
-    """Test P1-3: Failure case should not print success message (main.py display logic)"""
-    print("\n=== Testing P1-3: Failure handling (main.py display logic) ===")
-    
-    # Create test files
-    test_dir = "/tmp/test_p1_3"
-    os.makedirs(test_dir, exist_ok=True)
-    
-    # Create a small test video
-    video_path = os.path.join(test_dir, "test.mp4")
-    srt_path = os.path.join(test_dir, "nonexistent.srt")  # Non-existent file
-    
-    # Create test video using ffmpeg
-    subprocess.run([
-        "ffmpeg", "-f", "lavfi", "-i", "color=size=100x100:rate=1:color=red",
-        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-        "-t", "1", "-y", video_path
-    ], check=True)
-    
-    print("Testing failure case (non-existent SRT file)...")
-    
-    # Mock the process_video_with_subtitles to return (None, None) to simulate failure
-    from video_processor import process_video_with_subtitles as original_process
-    
-    def mock_process(*args, **kwargs):
-        return (None, None)
-    
-    # Temporarily replace the function
-    import video_processor
-    video_processor.process_video_with_subtitles = mock_process
-    
-    # Capture stdout to check for success messages
-    f = io.StringIO()
-    with redirect_stdout(f):
-        # Simulate user input 'y' for the interactive loop
-        # We'll test the display logic by calling process_single_video
-        # Since it's interactive, we need to mock input
-        original_input = __builtins__.input
-        def mock_input(prompt):
-            if "Continue with video processing" in prompt:
-                return 'y'
-            return ''
-        
-        __builtins__.input = mock_input
-        
-        try:
-            # This will call our mock process_video_with_subtitles which returns (None, None)
-            process_single_video(video_path, srt_path, test_dir)
-        finally:
-            __builtins__.input = original_input
-    
-    output = f.getvalue()
-    
-    # Restore original function
-    video_processor.process_video_with_subtitles = original_process
-    
-    print(f"Captured output: '{output}'")
-    
-    # Check that no success messages with checkmark were printed
+# Guard against a non-terminating loop hanging the test run
+MAX_PROMPTS = 5
+
+
+class LoopDidNotTerminate(RuntimeError):
+    pass
+
+
+def run_interactive_loop(process_result, srt_exists=True, user_input='y'):
+    """Run process_single_video with every external dependency mocked out.
+
+    Returns (captured_stdout, prompt_count). Raises LoopDidNotTerminate if the
+    loop asks for input more than MAX_PROMPTS times.
+    """
+    prompts = {'count': 0}
+
+    def fake_input(prompt=''):
+        prompts['count'] += 1
+        if prompts['count'] > MAX_PROMPTS:
+            raise LoopDidNotTerminate(
+                f"loop asked for input more than {MAX_PROMPTS} times")
+        return user_input
+
+    buf = io.StringIO()
+    with patch.object(main, 'download_youtube_video', return_value='/tmp/video.mp4'), \
+         patch.object(main, 'transcribe_video', return_value='/tmp/video.srt'), \
+         patch.object(main, 'parse_srt_to_text',
+                      return_value='[00:00:00,000 --> 00:00:01,000] hello'), \
+         patch.object(main, 'translate_transcription',
+                      return_value='[00:00:00,000 --> 00:00:01,000] 你好'), \
+         patch.object(main, 'format_to_markdown', return_value=('zh', 'en')), \
+         patch.object(main, 'create_srt_from_transcription', return_value=True), \
+         patch.object(main.os.path, 'exists', return_value=srt_exists), \
+         patch.object(main, 'process_video_with_subtitles',
+                      return_value=process_result), \
+         patch('builtins.input', fake_input):
+        with redirect_stdout(buf):
+            main.process_single_video('https://example.com/watch?v=test')
+
+    return buf.getvalue(), prompts['count']
+
+
+def test_p1_3_failure_display():
+    """P1-3: a failed embed must not print any success checkmark"""
+    print("\n=== Testing P1-3: failure must not print success ===")
+
+    output, _ = run_interactive_loop(process_result=(None, None))
+    print(f"Captured output: {output.strip()!r}")
+
     if "✓" in output:
-        print("❌ Failure case should not print success messages with checkmark")
+        print("❌ Failure path printed a success checkmark")
         return False
-    
-    # Check that failure message was printed
     if "✗" not in output:
-        print("❌ Failure case should print failure message with cross mark")
+        print("❌ Failure path did not print a failure message")
         return False
-    
-    print("✅ P1-3 failure handling test passed")
+
+    print("✅ P1-3 failure display test passed")
     return True
 
-def test_p1_3_success_case():
-    """Test P1-3: Success case should still print success messages (main.py display logic)"""
-    print("\n=== Testing P1-3: Success case (main.py display logic) ===")
-    
-    # Create test files
-    test_dir = "/tmp/test_p1_3_success"
-    os.makedirs(test_dir, exist_ok=True)
-    
-    # Create a small test video
-    video_path = os.path.join(test_dir, "test.mp4")
-    srt_path = os.path.join(test_dir, "test.srt")
-    
-    # Create test video using ffmpeg
-    subprocess.run([
-        "ffmpeg", "-f", "lavfi", "-i", "color=size=100x100:rate=1:color=blue",
-        "-f", "lavfi", "-i", "anullsrc=r=44100:cl=stereo",
-        "-t", "1", "-y", video_path
-    ], check=True)
-    
-    # Create test SRT file
-    with open(srt_path, 'w') as f:
-        f.write("1\n00:00:00,000 --> 00:00:01,000\nTest Subtitle\n\n")
-    
-    print("Testing success case...")
-    
-    # Mock the process_video_with_subtitles to return valid paths to simulate success
-    from video_processor import process_video_with_subtitles as original_process
-    
-    def mock_process(*args, **kwargs):
-        # Return valid paths to simulate success
-        base_name = os.path.splitext(os.path.basename(video_path))[0]
-        subtitled_video = os.path.join(test_dir, f"{base_name}_subtitled.mp4")
-        return (subtitled_video, subtitled_video)
-    
-    # Temporarily replace the function
-    import video_processor
-    video_processor.process_video_with_subtitles = mock_process
-    
-    # Capture stdout to check for success messages
-    f = io.StringIO()
-    with redirect_stdout(f):
-        # Simulate user input 'y' for the interactive loop
-        original_input = __builtins__.input
-        def mock_input(prompt):
-            if "Continue with video processing" in prompt:
-                return 'y'
-            return ''
-        
-        __builtins__.input = mock_input
-        
-        try:
-            # This will call our mock process_video_with_subtitles which returns valid paths
-            process_single_video(video_path, srt_path, test_dir)
-        finally:
-            __builtins__.input = original_input
-    
-    output = f.getvalue()
-    
-    # Restore original function
-    video_processor.process_video_with_subtitles = original_process
-    
-    print(f"Captured output: '{output}'")
-    
-    # Check that success message with checkmark was printed
-    if "✓ Video with embedded TRANSLATED subtitles:" not in output:
-        print("❌ Success case should print subtitled video success message with checkmark")
+
+def test_p1_3_success_display():
+    """P1-3: a successful embed must still report success (no regression)"""
+    print("\n=== Testing P1-3: success still reports success ===")
+
+    output, _ = run_interactive_loop(
+        process_result=('/tmp/video_subtitled.mp4', '/tmp/video_subtitled.mp4'))
+    print(f"Captured output: {output.strip()!r}")
+
+    if "✓" not in output:
+        print("❌ Success path did not print a success message")
         return False
-    
-    # Check that no failure messages were printed
     if "✗" in output:
-        print("❌ Success case should not print failure messages")
+        print("❌ Success path printed a failure message")
         return False
-    
-    print("✅ P1-3 success case test passed")
+
+    print("✅ P1-3 success display test passed")
     return True
 
-def main():
+
+def _assert_loop_terminates(label, **kwargs):
+    """Shared helper: the loop must prompt exactly once, then exit."""
+    try:
+        _, prompts = run_interactive_loop(**kwargs)
+    except LoopDidNotTerminate as exc:
+        print(f"❌ {label}: {exc}")
+        return False
+
+    if prompts != 1:
+        print(f"❌ {label}: expected 1 prompt, got {prompts}")
+        return False
+
+    print(f"✅ {label}: loop terminated after 1 prompt")
+    return True
+
+
+def test_r2_loop_terminates_on_success():
+    """R2: loop must exit after a successful run"""
+    print("\n=== Testing R2: loop exits on success ===")
+    return _assert_loop_terminates(
+        "success path",
+        process_result=('/tmp/video_subtitled.mp4', '/tmp/video_subtitled.mp4'))
+
+
+def test_r2_loop_terminates_on_failure():
+    """R2: loop must exit when processing fails (the regression that was missed)"""
+    print("\n=== Testing R2: loop exits on processing failure ===")
+    return _assert_loop_terminates("failure path", process_result=(None, None))
+
+
+def test_r2_loop_terminates_when_srt_missing():
+    """R2: loop must exit when the translated SRT is absent"""
+    print("\n=== Testing R2: loop exits when SRT missing ===")
+    return _assert_loop_terminates(
+        "missing SRT path", process_result=(None, None), srt_exists=False)
+
+
+def test_r2_loop_terminates_on_no():
+    """R2: loop must exit when the user declines"""
+    print("\n=== Testing R2: loop exits when user answers n ===")
+    return _assert_loop_terminates(
+        "declined path", process_result=(None, None), user_input='n')
+
+
+def main_runner():
     """Run all tests"""
     print("Starting P1 fixes verification tests...")
-    
+
     tests = [
-        test_p1_3_failure_handling,
-        test_p1_3_success_case
+        test_p1_3_failure_display,
+        test_p1_3_success_display,
+        test_r2_loop_terminates_on_success,
+        test_r2_loop_terminates_on_failure,
+        test_r2_loop_terminates_when_srt_missing,
+        test_r2_loop_terminates_on_no,
     ]
-    
+
     passed = []
     failed = []
     not_tested = []
-    
+
     for test in tests:
         try:
             result = test()
@@ -186,29 +170,26 @@ def main():
         except Exception as e:
             print(f"❌ Test {test.__name__} failed with exception: {e}")
             failed.append(test.__name__)
-    
+
     print(f"\n=== Test Results ===")
     print(f"PASSED: {len(passed)}/{len(tests)}")
-    if passed:
-        for test_name in passed:
-            print(f"  ✅ {test_name}")
-    
+    for test_name in passed:
+        print(f"  ✅ {test_name}")
+
     print(f"FAILED: {len(failed)}/{len(tests)}")
-    if failed:
-        for test_name in failed:
-            print(f"  ❌ {test_name}")
-    
+    for test_name in failed:
+        print(f"  ❌ {test_name}")
+
     print(f"NOT TESTED: {len(not_tested)}/{len(tests)}")
-    if not_tested:
-        for test_name in not_tested:
-            print(f"  ⚠️  {test_name}")
-    
+    for test_name in not_tested:
+        print(f"  ⚠️  {test_name}")
+
     if failed:
         print("❌ Some tests failed")
         return 1
-    else:
-        print("✅ All executed tests passed!")
-        return 0
+    print("✅ All executed tests passed!")
+    return 0
+
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.exit(main_runner())

@@ -89,13 +89,12 @@ def process_single_video(url: str, output_path: str = "./output") -> None:
                     print(f"✓ Video with embedded TRANSLATED subtitles: {subtitled_video}")
                     if mp4_video and mp4_video != subtitled_video:
                         print(f"✓ MP4 converted video: {mp4_video}")
-                    break  # Exit loop after successful processing
                 else:
                     print("✗ Video processing failed: Could not embed subtitles")
             else:
                 print("✗ Cannot proceed: Translated SRT file not found.")
                 print(f"Expected file: {translated_srt_file}")
-                break
+            break
         elif user_input in ['n', 'no']:
             print("Skipping video processing. You can manually process later using:")
             print(f"  ./ffmpeg_subtitles_general.sh {os.path.basename(video_file)} {os.path.basename(translated_srt_file)} output.mp4")
