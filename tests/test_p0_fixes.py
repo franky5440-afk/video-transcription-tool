@@ -6,10 +6,12 @@ Test script for P0 fixes verification
 import os
 import sys
 import time
+import shutil
+import tempfile
 import subprocess
 
 # Add project root to path
-sys.path.insert(0, '/home/lintzuyang/Opencode/project/website')
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 from video_processor import embed_subtitles_in_video, convert_to_mp4
 from youtube_downloader import download_youtube_video
@@ -197,36 +199,46 @@ def test_p0_1_failure_case():
     print("✅ P0-1 failure case test passed")
     return True
 
+# 19-second public video, stable and commonly used for tooling tests
+TEST_VIDEO_URL = "https://www.youtube.com/watch?v=jNQXAC9IVRw"
+
+
 def test_p0_2_youtube_download():
-    """Test P0-2: YouTube download with existing files"""
+    """Test P0-2: download must return the newly downloaded file, not a
+    pre-existing one that happens to sort first in os.listdir().
+
+    Requires network access; returns NOT_TESTED if the download cannot run.
+    """
     print("\n=== Testing P0-2: YouTube download ===")
-    
-    # Note: This test requires actual network connection to YouTube
-    # Since we are in an offline environment, we mark this as NOT TESTED
-    print("⚠️  P0-2 actual download test: NOT TESTED (requires network connection)")
-    print("     The fix uses yt-dlp --print with after_move stage to get actual filename")
-    print("     This avoids directory scanning issues and gets the correct path directly")
-    
-    # We can still test the basic function structure
-    test_dir = "/tmp/test_p0_2"
-    os.makedirs(test_dir, exist_ok=True)
-    
-    # Create some existing .mp4 files to simulate the problem scenario
-    existing_files = [
-        "existing_video_1_subtitled.mp4",
-        "existing_video_2.mp4",
-        "existing_video_3_subtitled.mp4"
-    ]
-    
-    for filename in existing_files:
-        path = os.path.join(test_dir, filename)
-        with open(path, 'w') as f:
-            f.write("dummy")
-    
-    print(f"     Created existing files for simulation: {existing_files}")
-    print("     Code structure verified: uses --print after_move:filename")
-    
-    return "NOT_TESTED"
+
+    test_dir = tempfile.mkdtemp(prefix="test_p0_2_")
+    try:
+        # Decoys the old `os.listdir(...)[0]` logic could pick instead
+        decoys = ["aaa_decoy_subtitled.mp4", "zzz_decoy.mp4", "mmm_old.webm"]
+        for name in decoys:
+            with open(os.path.join(test_dir, name), 'w') as f:
+                f.write("dummy")
+        print(f"Created decoy files: {decoys}")
+
+        result = download_youtube_video(TEST_VIDEO_URL, test_dir)
+
+        if result is None:
+            print("⚠️  P0-2: NOT TESTED (download failed — no network access?)")
+            return "NOT_TESTED"
+
+        print(f"Returned path: {result!r}")
+
+        if os.path.basename(result) in decoys:
+            print("❌ Returned a pre-existing decoy instead of the download")
+            return False
+        if not os.path.exists(result):
+            print("❌ Returned path does not exist on disk")
+            return False
+
+        print("✅ P0-2 download test passed")
+        return True
+    finally:
+        shutil.rmtree(test_dir, ignore_errors=True)
 
 def main():
     """Run all tests"""
