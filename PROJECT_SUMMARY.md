@@ -22,14 +22,14 @@ This project is a complete video processing pipeline that:
 ## Key Features
 
 ### Core Functionality
-- YouTube video download with yt-dlp
+- YouTube video download with yt-dlp (includes audio)
 - Audio transcription using Whisper AI
 - Traditional Chinese translation using Google Translator
 - Subtitle embedding with ffmpeg
 - MP4 conversion with H.264/AAC encoding
 
 ### Core Functionality
-- 使用yt-dlp下載YouTube影片
+- 使用yt-dlp下載YouTube影片（包含音頻）
 - 使用Whisper AI進行音頻轉錄
 - 使用Google Translator進行繁體中文翻譯
 - 使用ffmpeg嵌入字幕

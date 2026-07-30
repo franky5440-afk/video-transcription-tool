@@ -141,6 +141,28 @@
 
 #### 新增功能：通用字幕嵌入腳本與完整文件
 
+### 更新日誌 - 2026-07-30 10:00
+
+#### 修正：確保下載的影片包含音頻
+
+1. **問題發現**：
+   - 原始下載功能可能下載僅包含視頻流的影片
+   - 導致後續轉錄和處理可能失敗
+
+2. **解決方案**：
+   - 修改 `youtube_downloader.py` 中的 `download_youtube_video()` 函數
+   - 新增 `-f "bestvideo+bestaudio/best"` 參數以確保下載包含音頻
+   - 新增 `--merge-output-format "mp4"` 參數以合併為 MP4 格式
+
+3. **測試與驗證**：
+   - 成功下載包含音頻的測試影片
+   - 使用 ffprobe 驗證影片包含 audio 和 video 兩個流
+   - 確認下載功能正常工作
+
+4. **影響範圍**：
+   - 所有 YouTube 下載功能現在都會包含音頻
+   - 後續轉錄和處理流程更加穩定可靠
+
 1. **新增通用ffmpeg腳本**：
    - 創建 `ffmpeg_subtitles_general.sh`：適用於任何影片檔案
    - 創建 `ffmpeg_subtitles.sh`：專案專用腳本

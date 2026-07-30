@@ -11,7 +11,7 @@
 
 ### Features
 
-- **YouTube Download**: Download videos from YouTube URLs
+- **YouTube Download**: Download videos from YouTube URLs (includes audio)
 - **Local Video Support**: Process local video files directly
 - **Automatic Transcription**: Generate timestamps and text using Whisper
 - **Traditional Chinese Translation**: Translate transcriptions using Google Translator
@@ -116,7 +116,7 @@ create_srt_from_transcription(content, 'transcription.srt')
 ├── requirements.txt         # Python dependencies
 ├── README.md                # This file
 └── output/                  # Output directory
-    ├── video.webm           # Downloaded video
+    ├── video.mp4           # Downloaded video (with audio)
     ├── transcription.srt    # Original subtitles
     ├── transcription.md     # Translated transcription
     └── video_with_subtitles.mp4 # Final output
@@ -134,6 +134,7 @@ create_srt_from_transcription(content, 'transcription.srt')
 2. **Timeout issues**: Use bash scripts instead of Python for long videos
 3. **Special characters in filenames**: Use the general-purpose script
 4. **Translation errors**: Check your internet connection
+5. **No audio in downloaded video**: Update yt-dlp and ensure proper format selection
 
 ### License
 
@@ -147,7 +148,7 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ### 功能
 
-- **YouTube 下載**：從YouTube網址下載影片
+- **YouTube 下載**：從YouTube網址下載影片（包含音頻）
 - **本地影片支援**：直接處理本地影片檔案
 - **自動轉錄**：使用Whisper生成時間軸和文字
 - **繁體中文翻譯**：使用Google Translator翻譯轉錄內容
@@ -252,7 +253,7 @@ create_srt_from_transcription(content, 'transcription.srt')
 ├── requirements.txt         # Python依賴套件
 ├── README.md                # 本檔案
 └── output/                  # 輸出目錄
-    ├── video.webm           # 下載的影片
+    ├── video.mp4           # 下載的影片（包含音頻）
     ├── transcription.srt    # 原文字幕
     ├── transcription.md     # 翻譯後的轉錄
     └── video_with_subtitles.mp4 # 最終輸出
@@ -270,6 +271,7 @@ create_srt_from_transcription(content, 'transcription.srt')
 2. **超時問題**：對於長影片，請使用bash腳本而非Python腳本
 3. **檔案名稱含特殊字元**：請使用通用腳本
 4. **翻譯錯誤**：請檢查網路連線
+5. **下載的影片沒有音頻**：請更新yt-dlp並確保正確的格式選擇
 
 ### 授權
 

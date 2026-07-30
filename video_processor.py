@@ -37,12 +37,17 @@ def embed_subtitles_in_video(video_path: str, srt_path: str, output_path: str = 
             output_dir = os.path.dirname(video_path) or "."
             output_path = os.path.join(output_dir, f"{base_name}_subtitled.mp4")
         
-        # Use ffmpeg to embed subtitles
+        # Use ffmpeg to embed subtitles with better error handling
         command = [
             "ffmpeg",
             "-i", video_path,
-            "-vf", f"subtitles={srt_path}",
-            "-c:a", "copy",
+            "-vf", f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&HFFFFFF&'",
+            "-c:v", "libx264",
+            "-crf", "23",
+            "-preset", "fast",
+            "-c:a", "aac",
+            "-b:a", "192k",
+            "-movflags", "+faststart",
             output_path
         ]
         

@@ -160,17 +160,19 @@ def create_srt_from_transcription(transcription_text: str, output_srt_path: str)
                 if not line:
                     continue
                     
-                # Handle Markdown format: [timestamp] text
+                 # Handle Markdown format: [timestamp] text
                 if line.startswith('[') and ']' in line:
                     # Extract timestamp and text from Markdown format
                     timestamp_part = line.split(']')[0].replace('[', '').strip()
                     text_part = line.split(']')[1].strip()
                     
-                    # Write SRT format: number, timestamp, text, blank line
-                    f.write(f"{segment_number}\n")
-                    f.write(f"{timestamp_part}\n")
-                    f.write(f"{text_part}\n\n")
-                    segment_number += 1
+                    # Only write if we have actual text content
+                    if text_part:
+                        # Write SRT format: number, timestamp, text, blank line
+                        f.write(f"{segment_number}\n")
+                        f.write(f"{timestamp_part}\n")
+                        f.write(f"{text_part}\n\n")
+                        segment_number += 1
                 
                 # Handle SRT format: timestamp line followed by text
                 elif '-->' in line and '[' not in line:

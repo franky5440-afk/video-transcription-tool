@@ -25,9 +25,11 @@ def download_youtube_video(url: str, output_path: str = "./downloads") -> Option
         # Ensure the output directory exists
         os.makedirs(output_path, exist_ok=True)
         
-        # Use yt-dlp to download the video
+        # Use yt-dlp to download the video with audio
         command = [
             "yt-dlp",
+            "-f", "bestvideo+bestaudio/best",  # Download best video and audio
+            "--merge-output-format", "mp4",    # Merge into MP4 format
             "-o",
             os.path.join(output_path, "%(title)s.%(ext)s"),
             url
