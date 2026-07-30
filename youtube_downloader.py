@@ -41,27 +41,38 @@ def download_youtube_video(url: str, output_path: str = "./downloads") -> Option
             print(f"Failed to download video: {result.stderr}")
             return None
 
-        # Get the downloaded file path using yt-dlp's output
-        # Use --print to get the actual output filename from yt-dlp
-        print_command = [
+        # Get the downloaded file path using yt-dlp's --print with after_move stage
+        # This ensures we get the actual final path after download and file operations
+        command = [
             "yt-dlp",
-            "--print", "filename",
+            "-f", "bestvideo+bestaudio/best",  # Download best video and audio
+            "--merge-output-format", "mp4",    # Merge into MP4 format
+            "--print", "after_move:filename",  # Print final filename after file is moved
             "-o",
             os.path.join(output_path, "%(title)s.%(ext)s"),
             url
         ]
         
-        print_result = subprocess.run(print_command, capture_output=True, text=True)
-        if print_result.returncode != 0:
-            print(f"Failed to get downloaded filename: {print_result.stderr}")
+        result = subprocess.run(command, capture_output=True, text=True)
+        
+        if result.returncode != 0:
+            print(f"Failed to download video: {result.stderr}")
             return None
         
-        filename = print_result.stdout.strip()
+        # Extract the filename from the last line of stdout (after_move prints after download)
+        lines = result.stdout.strip().split('\n')
+        if not lines:
+            print("No output from yt-dlp.")
+            return None
+        
+        # The last line contains the final filename
+        filename = lines[-1].strip()
         if not filename:
             print("No filename returned from yt-dlp.")
             return None
         
-        downloaded_file = os.path.join(output_path, filename)
+        # filename from --print after_move is the full path, no need to join again
+        downloaded_file = filename
         
         # Verify the file exists
         if not os.path.exists(downloaded_file):

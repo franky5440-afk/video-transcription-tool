@@ -22,3 +22,6 @@ env/
 # 系統
 .DS_Store
 *.swp
+
+# 內部交接文件
+HANDOFF_*.md

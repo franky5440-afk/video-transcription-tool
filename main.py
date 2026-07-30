@@ -89,6 +89,7 @@ def process_single_video(url: str, output_path: str = "./output") -> None:
                     print(f"✓ Video with embedded TRANSLATED subtitles: {subtitled_video}")
                     if mp4_video and mp4_video != subtitled_video:
                         print(f"✓ MP4 converted video: {mp4_video}")
+                    break  # Exit loop after successful processing
                 else:
                     print("✗ Video processing failed: Could not embed subtitles")
             else:
