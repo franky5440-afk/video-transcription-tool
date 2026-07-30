@@ -40,6 +40,7 @@ def embed_subtitles_in_video(video_path: str, srt_path: str, output_path: str = 
         # Use ffmpeg to embed subtitles with better error handling
         command = [
             "ffmpeg",
+            "-y",  # Overwrite output file without asking
             "-i", video_path,
             "-vf", f"subtitles={srt_path}:force_style='FontName=Arial,FontSize=24,PrimaryColour=&HFFFFFF&'",
             "-c:v", "libx264",
@@ -51,7 +52,7 @@ def embed_subtitles_in_video(video_path: str, srt_path: str, output_path: str = 
             output_path
         ]
         
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         
         if result.returncode != 0:
             print(f"Failed to embed subtitles: {result.stderr}")
@@ -90,6 +91,7 @@ def convert_to_mp4(input_path: str, output_path: str = None) -> Optional[str]:
         # Use ffmpeg to convert to MP4
         command = [
             "ffmpeg",
+            "-y",  # Overwrite output file without asking
             "-i", input_path,
             "-c:v", "libx264",
             "-crf", "23",
@@ -99,7 +101,7 @@ def convert_to_mp4(input_path: str, output_path: str = None) -> Optional[str]:
             output_path
         ]
         
-        result = subprocess.run(command, capture_output=True, text=True)
+        result = subprocess.run(command, capture_output=True, text=True, stdin=subprocess.DEVNULL)
         
         if result.returncode != 0:
             print(f"Failed to convert to MP4: {result.stderr}")

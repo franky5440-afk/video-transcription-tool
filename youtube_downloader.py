@@ -36,18 +36,38 @@ def download_youtube_video(url: str, output_path: str = "./downloads") -> Option
         ]
         
         result = subprocess.run(command, capture_output=True, text=True)
-        
+
         if result.returncode != 0:
             print(f"Failed to download video: {result.stderr}")
             return None
+
+        # Get the downloaded file path using yt-dlp's output
+        # Use --print to get the actual output filename from yt-dlp
+        print_command = [
+            "yt-dlp",
+            "--print", "filename",
+            "-o",
+            os.path.join(output_path, "%(title)s.%(ext)s"),
+            url
+        ]
         
-        # Get the downloaded file path
-        downloaded_files = [f for f in os.listdir(output_path) if f.endswith(".mp4") or f.endswith(".webm")]
-        if not downloaded_files:
-            print("No video file found after download.")
+        print_result = subprocess.run(print_command, capture_output=True, text=True)
+        if print_result.returncode != 0:
+            print(f"Failed to get downloaded filename: {print_result.stderr}")
             return None
         
-        downloaded_file = os.path.join(output_path, downloaded_files[0])
+        filename = print_result.stdout.strip()
+        if not filename:
+            print("No filename returned from yt-dlp.")
+            return None
+        
+        downloaded_file = os.path.join(output_path, filename)
+        
+        # Verify the file exists
+        if not os.path.exists(downloaded_file):
+            print(f"Downloaded file not found: {downloaded_file}")
+            return None
+        
         print(f"Video downloaded successfully: {downloaded_file}")
         return downloaded_file
         

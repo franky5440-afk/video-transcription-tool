@@ -87,14 +87,14 @@ def process_single_video(url: str, output_path: str = "./output") -> None:
                 subtitled_video, mp4_video = process_video_with_subtitles(video_file, translated_srt_file, output_path)
                 if subtitled_video:
                     print(f"✓ Video with embedded TRANSLATED subtitles: {subtitled_video}")
-                if mp4_video and mp4_video != subtitled_video:
-                    print(f"✓ MP4 converted video: {mp4_video}")
+                    if mp4_video and mp4_video != subtitled_video:
+                        print(f"✓ MP4 converted video: {mp4_video}")
                 else:
-                    print("✓ Video processing completed successfully!")
+                    print("✗ Video processing failed: Could not embed subtitles")
             else:
                 print("✗ Cannot proceed: Translated SRT file not found.")
                 print(f"Expected file: {translated_srt_file}")
-            break
+                break
         elif user_input in ['n', 'no']:
             print("Skipping video processing. You can manually process later using:")
             print(f"  ./ffmpeg_subtitles_general.sh {os.path.basename(video_file)} {os.path.basename(translated_srt_file)} output.mp4")
@@ -160,7 +160,7 @@ def create_srt_from_transcription(transcription_text: str, output_srt_path: str)
                 if not line:
                     continue
                     
-                 # Handle Markdown format: [timestamp] text
+                # Handle Markdown format: [timestamp] text
                 if line.startswith('[') and ']' in line:
                     # Extract timestamp and text from Markdown format
                     timestamp_part = line.split(']')[0].replace('[', '').strip()
