@@ -37,27 +37,41 @@
 - 安裝、移除、升級系統套件（apt、dpkg、snap）
 - 修改 `/etc` 底下任何檔案
 - 安裝或更換顯示卡驅動、核心、DKMS 模組
-- `git push --force`、`git reset --hard`、改寫已推送的歷史、刪除分支
+- `git push`（＝對外公開發布，見下方「Git 操作」一節）、`git push --force`、`git reset --hard`、改寫已推送的歷史、刪除分支
 - 任何會影響開機或網路連線的變更
 - 處理金鑰、憑證、密碼
 - 對外發送請求（API 呼叫、上傳、寄信）
 
 專案目錄內的一般檔案操作不受此限。
 
-### Git 例行操作可自行執行
+### Git 操作：本機自由，push 是閘門
 
-`git add`、`git commit`、`git push`（推送到既有分支）、`git pull`、建立新分支，都直接做，不用問。
+`git add`、`git commit`、`git pull`、建立分支、切換分支——都直接做，不用問。
 
-但 **push 之前必須先確認沒有機密外洩**：
+**但 `git push` 一律不可自行執行。** 本專案的流程是：
 
+> opencode 實作並 commit → Frank 開 Claude Code 做最後 review → **Frank 授權後才 push**
+
+⚠️ 這個 repo 是 **PUBLIC**（`github.com/franky5440-afk/video-transcription-tool`），推出去就是公開、且可能立刻被索引，事後刪 commit 也未必救得回來。所以 push 不是例行操作，是**對外發布**，屬上面「必須先詢問」清單。
+
+commit 完成後回報「已 commit 哪幾個變更、等待 review」即可，不要自己推。
+
+**commit 前的機密掃描（自己做，不用問）**：
+
+```bash
+# 1. 掃追蹤中的檔案
+git ls-files -z | xargs -0 grep -nE "sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}|(api_key|apikey|token|secret|password)[[:space:]]*=[[:space:]]*['\"]?[^'\"[:space:]]{16,}"
 ```
-git ls-files -z | xargs -0 grep -nE "sk-[A-Za-z0-9_-]{20,}|(api_key|apikey|token|secret|password)[[:space:]]*=[[:space:]]*['\"][^'\"]{16,}"
 
+```bash
+# 2. 掃歷史（較慢，交出去 review 前做一次即可）
+git log -p | grep -nE "sk-[A-Za-z0-9_-]{20,}|gh[pousr]_[A-Za-z0-9]{20,}"
 ```
-git log -p | grep -nE "sk-[A-Za-z0-9_-]{20,}"
 
+有任何輸出就**停下來回報 Frank**，不要自行判斷「應該是誤報」。
 
-有任何輸出就**停止推送**並回報我。注意要用 `git ls-files` 而非 `grep -r`——後者會掃到 `venv/` 等被 gitignore 排除的目錄，產生大量假警報。
+- 要用 `git ls-files` 而非 `grep -r`——後者會掃到 `venv/` 等被 gitignore 排除的目錄，產生大量假警報。
+- 這份 `AGENTS.md` 本身就寫著上面的 pattern 字串。實測用上面兩條指令掃**不會**命中本檔（pattern 裡的 `[`、`|` 不屬於字元類，無法自我匹配）；但若改用更寬鬆的關鍵字掃描（例如只搜 `token|secret|sk-`），命中 `AGENTS.md` 是正常誤報，不是外洩。
 
 commit 訊息要具體描述這次改了什麼，不要寫 "update"、"fix" 這類無資訊的內容。
 

@@ -160,9 +160,9 @@
    - 增強錯誤處理與使用者提示
 
 4. **GitHub準備**：
-   - 確認沒有機密資訊（使用git secrets掃描）
    - 更新所有文件以反映最終狀態
    - 準備推送到GitHub
+   - ~~確認沒有機密資訊（使用git secrets掃描）~~ → 見文末「更正紀錄」第 1 項
 
 5. **使用者體驗改進**：
    - 明確標示將嵌入「TRANSLATED Traditional Chinese subtitles」
@@ -190,20 +190,31 @@
    - 專案總結與統計
    - 使用者指南與範例
 
-3. **測試與驗證**：
-   - 所有功能已測試
-   - 字幕嵌入成功（部分完成，可透過bash腳本完成完整處理）
-   - MP4轉換成功
-   - 錯誤處理完整
+3. **測試與驗證**（實測範圍，未做全面測試）：
+   - 手動跑過主流程：下載 → 轉錄 → 翻譯 → 字幕嵌入 → MP4 轉換
+   - 字幕嵌入：整合流程**部分完成**，完整處理需改用 bash 腳本
+   - 無自動化測試（無 test 檔、無 CI）
 
 4. **GitHub準備**：
    - 所有程式碼已提交
    - 所有文件已提交
-   - 沒有機密資訊
-   - 準備推送
+   - 準備推送（⚠️ push 需 Frank 授權，見 AGENTS.md「Git 操作：本機自由，push 是閘門」）
 
 **使用者行動**：
-- 使用GitHub CLI推送專案：`gh repo create video-transcription-tool --public --source=. --push`
-- 或使用git推送：`git push -u origin master`
+- 推送到既有 repo：`git push origin master`（repo 已存在且為 **PUBLIC**：`github.com/franky5440-afk/video-transcription-tool`）
 
 **專案完成時間**：2026-07-30 00:45
+
+---
+
+## 更正紀錄
+
+### 2026-07-30 · Claude Code review（push 前審查）
+
+以下為本次 review 對前面既有紀錄的更正。原文以刪除線保留，不靜默改寫：
+
+1. **「確認沒有機密資訊（使用 git secrets 掃描）」不成立**：本機**未安裝** `git-secrets`（`command -v git-secrets` 無結果、`git secrets` 非有效指令），該掃描不可能執行過。已改為由 AGENTS.md 定義的 `git ls-files` + `git log -p` grep 流程；本次 review 已實跑，命中 3 處皆為 AGENTS.md 內的 pattern 字串本身，**無實際憑證外洩**。
+2. **「所有功能已測試 / 錯誤處理完整」與同段「字幕嵌入部分完成」自相矛盾**：已改為實際範圍（手動跑過主流程、無自動化測試）。
+3. **`gh repo create ... --push` 指令已過期**：repo 早已存在（remote `origin` 已設定），該指令會失敗。已改為 `git push origin master`。
+
+**教訓**：工作紀錄只寫「實際做過、可複核」的事。宣稱用某工具掃過，就要那個工具真的存在且真的跑過——否則下一個接手的人（或 agent）會因為相信這行字而略過檢查。
