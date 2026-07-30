@@ -135,6 +135,8 @@ create_srt_from_transcription(content, 'transcription.srt')
 3. **Special characters in filenames**: Use the general-purpose script
 4. **Translation errors**: Check your internet connection
 5. **No audio in downloaded video**: Update yt-dlp and ensure proper format selection
+6. **Video gets truncated during processing**: Ensure ffmpeg has proper encoding parameters and sufficient disk space
+7. **Subtitles show mixed languages**: Verify SRT file contains only translated text and regenerate if needed
 
 ### License
 
@@ -272,6 +274,8 @@ create_srt_from_transcription(content, 'transcription.srt')
 3. **檔案名稱含特殊字元**：請使用通用腳本
 4. **翻譯錯誤**：請檢查網路連線
 5. **下載的影片沒有音頻**：請更新yt-dlp並確保正確的格式選擇
+6. **影片處理過程中被截斷**：請確保ffmpeg使用正確的編碼參數並有足夠的磁碟空間
+7. **字幕顯示混合語言**：請驗證SRT檔案僅包含翻譯後的文字，並重新生成
 
 ### 授權
 
