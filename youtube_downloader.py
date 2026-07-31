@@ -9,6 +9,14 @@ import os
 import subprocess
 from typing import Optional
 
+# Prefer the best decodable video stream on this machine.
+# yt-dlp's default preference ranks AV1 first, but AV1 is consistently the
+# lowest-bitrate stream at a given resolution on YouTube (and decodes slower
+# than VP9 here). Exclude AV1 via regex (vcodec is like "av01.0.09M.08"), then
+# fall back to the unconstrained best video+audio / combined format so that
+# videos offering only AV1 still download successfully.
+FORMAT_SELECTION = "bestvideo[vcodec!*=av01]+bestaudio/bestvideo+bestaudio/best"
+
 
 def download_youtube_video(url: str, output_path: str = "./downloads") -> Optional[str]:
     """
@@ -28,7 +36,7 @@ def download_youtube_video(url: str, output_path: str = "./downloads") -> Option
         # Use yt-dlp to download the video with audio
         command = [
             "yt-dlp",
-            "-f", "bestvideo+bestaudio/best",  # Download best video and audio
+            "-f", FORMAT_SELECTION,          # Download best video and audio
             "--merge-output-format", "mp4",    # Merge into MP4 format
             "-o",
             os.path.join(output_path, "%(title)s.%(ext)s"),
@@ -45,7 +53,7 @@ def download_youtube_video(url: str, output_path: str = "./downloads") -> Option
         # This ensures we get the actual final path after download and file operations
         command = [
             "yt-dlp",
-            "-f", "bestvideo+bestaudio/best",  # Download best video and audio
+            "-f", FORMAT_SELECTION,          # Download best video and audio
             "--merge-output-format", "mp4",    # Merge into MP4 format
             "--print", "after_move:filename",  # Print final filename after file is moved
             "-o",
