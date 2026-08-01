@@ -25,3 +25,11 @@ env/
 
 # 內部交接文件
 HANDOFF_*.md
+
+# AppImage 打包產物與工具（體積 GB 級，不進版控）
+*.AppImage
+build_appimage/AppDir/
+build_appimage/tools/
+build_appimage/clips/
+build_appimage/testout/
+build_appimage/testout_all/
