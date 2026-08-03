@@ -56,9 +56,13 @@ _lock = threading.Lock()
 _jobs = {}
 _active_job_id = None
 
+# Base directory for job output, matching the --output default of the other
+# subcommands. serve() replaces it with whatever --output was given.
+_output_base = "./output"
+
 
 def _output_root() -> str:
-    return os.path.abspath(os.path.join("output", "webui"))
+    return os.path.abspath(os.path.join(_output_base, "webui"))
 
 
 def _set_step(job: dict, name: str, status: str, detail: str = "") -> None:
@@ -278,14 +282,19 @@ def get_file(job_id, filename):
     return send_file(target, as_attachment=True)
 
 
-def serve(port: int, open_browser: bool = True) -> None:
+def serve(port: int, open_browser: bool = True, output: str = "./output") -> None:
     """
     Run the web UI server until interrupted.
+
+    Job output goes to <output>/webui/<job_id>/, so --output means the same
+    thing here as in the other subcommands.
 
     When the port cannot be bound, make_server prints the reason on stderr and
     exits with status 1 (verified for both "address already in use" and
     "permission denied"); the server never falls back to another port.
     """
+    global _output_base
+    _output_base = output
     # S1/S3: bound to 127.0.0.1, no debug mode, no reloader.
     server = make_server(HOST, port, app, threaded=True)
     url = f"http://{HOST}:{port}/"

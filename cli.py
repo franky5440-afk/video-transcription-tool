@@ -146,7 +146,7 @@ def cmd_serve(args) -> int:
     from webui.server import serve
     # An unavailable port is reported on stderr with exit 1 by serve() itself;
     # it never falls back to a different port.
-    serve(args.port, open_browser=not args.no_browser)
+    serve(args.port, open_browser=not args.no_browser, output=args.output)
     return 0
 
 
@@ -188,9 +188,10 @@ def build_parser() -> argparse.ArgumentParser:
     p.add_argument("--output", default="./output")
     p.set_defaults(func=cmd_mp4)
 
-    p = sub.add_parser("serve", help="run the local web UI (localhost only, job output in ./output/webui/<job_id>)")
+    p = sub.add_parser("serve", help="run the local web UI (localhost only, job output in <output>/webui/<job_id>)")
     p.add_argument("--port", type=int, default=8713, help="port to listen on (default: 8713)")
     p.add_argument("--no-browser", action="store_true", help="do not open a browser window on start")
+    p.add_argument("--output", default="./output")
     p.set_defaults(func=cmd_serve)
 
     return parser
