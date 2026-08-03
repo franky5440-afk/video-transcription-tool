@@ -29,6 +29,7 @@ env/
 HANDOFF_*.md
 AGENTS.md
 CLAUDE.md
+WORK_LOG.md
 
 # AppImage 打包產物與工具（體積 GB 級，不進版控）
 *.AppImage
