@@ -4,6 +4,10 @@
 # Produces: build_appimage/AppDir/  (staging, not committed)
 #           video-transcription-tool.AppImage  (final product, not committed)
 #
+# Third-party build inputs (CPU-only torch wheel, static ffmpeg, appimagetool)
+# are downloaded into build_appimage/tools/ on first run and reused after that;
+# that directory is gitignored, so a fresh clone re-fetches them.
+#
 # Reuses the existing project venv (<repo root>/venv)
 # for the bundled site-packages and strips all CUDA-only content, which is
 # unusable on this machine (nouveau driver, no NVIDIA proprietary driver).
@@ -17,6 +21,50 @@ SITE="$VENV/lib/python3.12/site-packages"
 PY_SYS="/usr/lib/python3.12"
 LIBDIR="/lib/x86_64-linux-gnu"
 MODULES="youtube_downloader.py transcription_service.py translation_service.py output_formatter.py video_processor.py main.py"
+TOOLS="$BUILD/tools"
+OUT="$ROOT/video-transcription-tool.AppImage"
+WHISPER_MODEL="${XDG_CACHE_HOME:-$HOME/.cache}/whisper/base.pt"
+
+TORCH_WHL="torch-2.13.0%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl"
+TORCH_URL="https://download.pytorch.org/whl/cpu/$TORCH_WHL"
+FFMPEG_TAR="ffmpeg-release-amd64-static.tar.xz"
+FFMPEG_URL="https://johnvansickle.com/ffmpeg/releases/$FFMPEG_TAR"
+APPIMAGETOOL="appimagetool-x86_64.AppImage"
+APPIMAGETOOL_URL="https://github.com/AppImage/appimagetool/releases/download/continuous/$APPIMAGETOOL"
+
+echo "== preflight =="
+[ -d "$SITE" ] || { echo "ERROR: project venv not found at $VENV" >&2; exit 1; }
+if [ ! -f "$WHISPER_MODEL" ]; then
+  echo "ERROR: whisper 'base' model not found at $WHISPER_MODEL" >&2
+  echo "       fetch it once with:" >&2
+  echo "       \"$VENV/bin/python\" -c \"import whisper; whisper.load_model('base')\"" >&2
+  exit 1
+fi
+
+echo "== fetching build inputs into tools/ (skipped when already present) =="
+mkdir -p "$TOOLS"
+fetch() {  # fetch <url> <dest>
+  if [ -s "$2" ]; then
+    echo "  have $(basename "$2")"
+    return
+  fi
+  echo "  downloading $(basename "$2")"
+  curl -fL --retry 3 -o "$2.part" "$1"
+  mv "$2.part" "$2"
+}
+fetch "$TORCH_URL" "$TOOLS/$TORCH_WHL"
+fetch "$FFMPEG_URL" "$TOOLS/$FFMPEG_TAR"
+fetch "$APPIMAGETOOL_URL" "$TOOLS/$APPIMAGETOOL"
+
+if [ ! -x "$TOOLS/ffmpeg" ]; then
+  echo "  extracting static ffmpeg/ffprobe"
+  tar -xJf "$TOOLS/$FFMPEG_TAR" -C "$TOOLS" --strip-components=1 --wildcards '*/ffmpeg' '*/ffprobe'
+fi
+if [ ! -x "$TOOLS/squashfs-root/AppRun" ]; then
+  echo "  extracting appimagetool (so packaging does not need FUSE)"
+  chmod +x "$TOOLS/$APPIMAGETOOL"
+  ( cd "$TOOLS" && "./$APPIMAGETOOL" --appimage-extract >/dev/null )
+fi
 
 echo "== clearing staging AppDir =="
 rm -rf "$APPDIR"
@@ -49,7 +97,7 @@ rm -rf "$SP/nvidia" "$SP/cuda" "$SP/cuda_bindings" "$SP/cuda_bindings-13.3.1.dis
 
 echo "== replacing the CUDA-enabled torch wheel with the CPU-only wheel =="
 rm -rf "$SP/torch" "$SP/torch-2.13.0.dist-info" "$SP/torchgen" "$SP/functorch"
-unzip -q "$BUILD/tools/torch-2.13.0%2Bcpu-cp312-cp312-manylinux_2_28_x86_64.whl" -d "$SP"
+unzip -q "$TOOLS/$TORCH_WHL" -d "$SP"
 rm -f "$SP/torch/lib/libtorch_cuda.so" "$SP/torch/lib/libtorch_cuda_linalg.so" \
       "$SP/torch/lib/libc10_cuda.so" "$SP/torch/lib/libtorch_nvshmem.so" \
       "$SP/torch/lib/libcaffe2_nvrtc.so"
@@ -73,13 +121,9 @@ chmod +x "$APPDIR/usr/bin/yt-dlp"
 echo "== bundling whisper 'base' model cache =="
 cp "$HOME/.cache/whisper/base.pt" "$APPDIR/cache/whisper/base.pt"
 
-echo "== bundling static ffmpeg/ffprobe (if present in tools/) =="
-if [ -x "$BUILD/tools/ffmpeg" ]; then
-  cp "$BUILD/tools/ffmpeg" "$BUILD/tools/ffprobe" "$APPDIR/usr/bin/"
-  chmod +x "$APPDIR/usr/bin/ffmpeg" "$APPDIR/usr/bin/ffprobe"
-else
-  echo "  !! tools/ffmpeg missing - AppImage will depend on system ffmpeg"
-fi
+echo "== bundling static ffmpeg/ffprobe =="
+cp "$TOOLS/ffmpeg" "$TOOLS/ffprobe" "$APPDIR/usr/bin/"
+chmod +x "$APPDIR/usr/bin/ffmpeg" "$APPDIR/usr/bin/ffprobe"
 
 echo "== writing AppRun =="
 cat > "$APPDIR/AppRun" <<'EOF'
@@ -114,5 +158,11 @@ echo "== copying desktop file + icon to AppDir root (appimagetool requirement) =
 cp "$APPDIR/usr/share/applications/video-transcription-tool.desktop" "$APPDIR/video-transcription-tool.desktop"
 cp "$APPDIR/usr/share/icons/hicolor/256x256/apps/video-transcription-tool.png" "$APPDIR/video-transcription-tool.png"
 
-echo "== done. AppDir size: =="
+echo "== AppDir staged, size: =="
 du -sh "$APPDIR"
+
+echo "== packaging AppImage =="
+ARCH=x86_64 "$TOOLS/squashfs-root/AppRun" "$APPDIR" "$OUT"
+
+echo "== done =="
+ls -lh "$OUT"
