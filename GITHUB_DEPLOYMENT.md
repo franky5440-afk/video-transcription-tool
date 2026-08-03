@@ -15,7 +15,7 @@
 
 ```bash
 # Navigate to your project directory
-cd /home/lintzuyang/Opencode/project/website
+cd /path/to/video-transcription-tool
 
 # Add the remote repository
 # Replace the URL with your actual GitHub repository URL
@@ -82,7 +82,7 @@ git push origin v1.0
 
 ```bash
 # 導航到您的專案目錄
-cd /home/lintzuyang/Opencode/project/website
+cd /path/to/video-transcription-tool
 
 # 添加遠端專案
 # 將網址替換為您實際的GitHub專案網址

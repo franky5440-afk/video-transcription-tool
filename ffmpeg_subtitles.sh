@@ -9,9 +9,10 @@ echo "Embedding subtitles using ffmpeg..."
 echo "This may take several minutes for long videos."
 
 # Use simple filenames to avoid special character issues
-INPUT_VIDEO="/home/lintzuyang/Opencode/project/website/output/input.webm"
-INPUT_SRT="/home/lintzuyang/Opencode/project/website/output/subtitles.srt"
-OUTPUT_MP4="/home/lintzuyang/Opencode/project/website/output/final_output_with_subtitles.mp4"
+ROOT="$(cd "$(dirname "$0")" && pwd)"
+INPUT_VIDEO="$ROOT/output/input.webm"
+INPUT_SRT="$ROOT/output/subtitles.srt"
+OUTPUT_MP4="$ROOT/output/final_output_with_subtitles.mp4"
 
 # Check if input files exist
 if [ ! -f "$INPUT_VIDEO" ]; then

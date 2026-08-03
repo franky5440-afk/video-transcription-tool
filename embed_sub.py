@@ -14,7 +14,7 @@ from transcription_service import parse_srt_to_text
 def main():
     """Main function to handle subtitle embedding."""
     # Define paths using variables to avoid issues with special characters
-    base_dir = "/home/lintzuyang/Opencode/project/website/output"
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
     
     # Ensure output directory exists
     os.makedirs(base_dir, exist_ok=True)

@@ -11,7 +11,7 @@ import shutil
 
 def main():
     """Main function to handle fast subtitle embedding."""
-    base_dir = "/home/lintzuyang/Opencode/project/website/output"
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
     
     # Ensure output directory exists
     os.makedirs(base_dir, exist_ok=True)

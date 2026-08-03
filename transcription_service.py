@@ -115,7 +115,7 @@ def parse_srt_to_text(srt_path: str) -> Optional[str]:
 
 if __name__ == "__main__":
     # Example usage
-    video_path = "/home/lintzuyang/Opencode/project/website/output/How I'm making 20+ Divines an Hour With Breach in 3.29 - Path of Exile 1.mp4"
+    video_path = "output/How I'm making 20+ Divines an Hour With Breach in 3.29 - Path of Exile 1.mp4"
     transcription_file = transcribe_video(video_path)
     if transcription_file:
         print(f"Transcription file: {transcription_file}")
@@ -172,7 +172,7 @@ def parse_srt_to_text(srt_path: str) -> Optional[str]:
 
 if __name__ == "__main__":
     # Example usage
-    video_path = "/home/lintzuyang/Opencode/project/website/output/How I'm making 20+ Divines an Hour With Breach in 3.29 - Path of Exile 1.mp4"
+    video_path = "output/How I'm making 20+ Divines an Hour With Breach in 3.29 - Path of Exile 1.mp4"
     transcription_file = transcribe_video(video_path)
     if transcription_file:
         print(f"Transcription file: {transcription_file}")

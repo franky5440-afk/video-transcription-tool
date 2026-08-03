@@ -12,7 +12,7 @@ from video_processor import convert_to_mp4
 
 def main():
     """Main function to handle subtitle embedding with simple filenames."""
-    base_dir = "/home/lintzuyang/Opencode/project/website/output"
+    base_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "output")
     
     # Ensure output directory exists
     os.makedirs(base_dir, exist_ok=True)
