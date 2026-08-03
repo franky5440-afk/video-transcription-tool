@@ -4,7 +4,7 @@
 # Produces: build_appimage/AppDir/  (staging, not committed)
 #           video-transcription-tool.AppImage  (final product, not committed)
 #
-# Reuses the existing project venv (/home/lintzuyang/Opencode/project/website/venv)
+# Reuses the existing project venv (<repo root>/venv)
 # for the bundled site-packages and strips all CUDA-only content, which is
 # unusable on this machine (nouveau driver, no NVIDIA proprietary driver).
 set -euo pipefail
@@ -12,7 +12,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 BUILD="$ROOT/build_appimage"
 APPDIR="$BUILD/AppDir"
-VENV="/home/lintzuyang/Opencode/project/website/venv"
+VENV="$ROOT/venv"
 SITE="$VENV/lib/python3.12/site-packages"
 PY_SYS="/usr/lib/python3.12"
 LIBDIR="/lib/x86_64-linux-gnu"
