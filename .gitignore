@@ -23,8 +23,12 @@ env/
 .DS_Store
 *.swp
 
-# 內部交接文件
+# 內部文件：交接與 agent 規則檔
+# 這個 repo 是 PUBLIC，而這些檔案記錄的是本機工作流程、review 閘門與內部審查標準，
+# 不是給使用者看的東西。
 HANDOFF_*.md
+AGENTS.md
+CLAUDE.md
 
 # AppImage 打包產物與工具（體積 GB 級，不進版控）
 *.AppImage
