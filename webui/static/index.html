@@ -1,0 +1,985 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>影片轉錄工具</title>
+<style>
+  :root {
+    --bg: #f5f5f7;
+    --card-bg: #ffffff;
+    --text: #1d1d1f;
+    --text-secondary: #6e6e73;
+    --border: #d7d7db;
+    --accent: #0071e3;
+    --accent-text: #ffffff;
+    --accent-hover: #0060c2;
+    --success: #1a7f37;
+    --success-bg: #e6f4ea;
+    --error: #c0392b;
+    --error-bg: #fdecea;
+    --pending: #8a8a8e;
+    --pending-bg: #ececec;
+    --running: #0071e3;
+    --running-bg: #e8f1fc;
+    --skip-bg: #efefef;
+    --radius: 12px;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1c1e;
+      --card-bg: #2c2c2e;
+      --text: #f5f5f7;
+      --text-secondary: #a1a1a6;
+      --border: #48484a;
+      --accent: #409cff;
+      --accent-text: #06111c;
+      --accent-hover: #5eabff;
+      --success: #4cd873;
+      --success-bg: #113a1e;
+      --error: #ff6b5e;
+      --error-bg: #3a1613;
+      --pending: #98989d;
+      --pending-bg: #3a3a3c;
+      --running: #409cff;
+      --running-bg: #123049;
+      --skip-bg: #333335;
+      --shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+    }
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC",
+      "Microsoft JhengHei", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  main.container {
+    max-width: 560px;
+    margin: 0 auto;
+    padding: 24px 16px 64px;
+  }
+
+  header.app-header {
+    text-align: center;
+    padding: 24px 0 8px;
+  }
+
+  header.app-header h1 {
+    font-size: 20px;
+    margin: 0 0 4px;
+  }
+
+  header.app-header p {
+    margin: 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+
+  .card {
+    background: var(--card-bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 24px;
+    margin-top: 16px;
+  }
+
+  .hidden { display: none !important; }
+
+  h2 {
+    font-size: 18px;
+    margin: 0 0 16px;
+  }
+
+  .hint {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.6;
+    margin: 0 0 16px;
+  }
+
+  .workflow-options {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .workflow-btn {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+    text-align: left;
+    width: 100%;
+    padding: 16px;
+    border-radius: 10px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    cursor: pointer;
+    font-size: 15px;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .workflow-btn:hover {
+    border-color: var(--accent);
+    background: var(--running-bg);
+  }
+
+  .workflow-btn .wf-title {
+    font-weight: 600;
+    font-size: 16px;
+  }
+
+  .workflow-btn .wf-desc {
+    color: var(--text-secondary);
+    font-size: 13px;
+    line-height: 1.5;
+  }
+
+  .workflow-btn .wf-badge {
+    display: inline-block;
+    margin-top: 4px;
+    font-size: 12px;
+    padding: 2px 8px;
+    border-radius: 999px;
+    background: var(--success-bg);
+    color: var(--success);
+  }
+
+  .link-btn {
+    background: none;
+    border: none;
+    color: var(--accent);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 0 0 12px;
+    display: inline-block;
+  }
+
+  form#job-form {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  input#source-input {
+    width: 100%;
+    padding: 12px 14px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 15px;
+  }
+
+  input#source-input:disabled {
+    opacity: 0.6;
+  }
+
+  button.primary-btn {
+    padding: 12px 16px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: var(--accent-text);
+    font-size: 15px;
+    font-weight: 600;
+    cursor: pointer;
+  }
+
+  button.primary-btn:hover {
+    background: var(--accent-hover);
+  }
+
+  button.primary-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  button.secondary-btn {
+    padding: 10px 16px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    background: var(--bg);
+    color: var(--text);
+    font-size: 14px;
+    cursor: pointer;
+    align-self: flex-start;
+  }
+
+  p.error-text {
+    color: var(--error);
+    background: var(--error-bg);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin: 0;
+  }
+
+  p.elapsed-line {
+    font-size: 14px;
+    color: var(--text-secondary);
+    margin: 0 0 16px;
+  }
+
+  p.elapsed-line strong {
+    color: var(--text);
+  }
+
+  ol.steps-list {
+    list-style: none;
+    margin: 0 0 8px;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li.step {
+    display: grid;
+    grid-template-columns: 28px 1fr auto;
+    align-items: center;
+    padding: 10px 12px;
+    border-radius: 8px;
+    background: var(--pending-bg);
+    font-size: 14px;
+    column-gap: 8px;
+  }
+
+  li.step .step-detail {
+    grid-column: 2 / 4;
+    font-size: 12px;
+    color: var(--text-secondary);
+    margin-top: 2px;
+  }
+
+  li.step .step-icon {
+    font-size: 16px;
+    text-align: center;
+  }
+
+  li.step .step-status-text {
+    font-size: 12px;
+    color: var(--text-secondary);
+    white-space: nowrap;
+  }
+
+  li.step-running {
+    background: var(--running-bg);
+  }
+
+  li.step-running .step-icon {
+    display: inline-block;
+    color: var(--running);
+    animation: spin 1.1s linear infinite;
+  }
+
+  li.step-done {
+    background: var(--success-bg);
+  }
+
+  li.step-done .step-icon { color: var(--success); }
+
+  li.step-error {
+    background: var(--error-bg);
+  }
+
+  li.step-error .step-icon { color: var(--error); }
+
+  li.step-skipped .step-icon,
+  li.step-skipped .step-status-text {
+    color: var(--pending);
+  }
+
+  li.step-pending .step-icon { color: var(--pending); }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+
+  ul.outputs-list {
+    list-style: none;
+    margin: 16px 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  li.output-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    font-size: 14px;
+  }
+
+  li.output-item .output-meta {
+    color: var(--text-secondary);
+    font-size: 12px;
+  }
+
+  li.output-item a.download-link {
+    color: var(--accent);
+    text-decoration: none;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+
+  li.output-item a.download-link:hover {
+    text-decoration: underline;
+  }
+
+  footer.app-footer {
+    text-align: center;
+    color: var(--text-secondary);
+    font-size: 12px;
+    margin-top: 24px;
+  }
+
+  @media (max-width: 420px) {
+    main.container { padding: 16px 12px 48px; }
+    .card { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+<main class="container">
+  <header class="app-header">
+    <h1>影片轉錄工具</h1>
+    <p>貼上網址或本機檔案，剩下的交給它跑</p>
+  </header>
+
+  <!-- 選擇工作流 -->
+  <section id="view-select" class="card">
+    <h2>你想要什麼結果？</h2>
+    <div class="workflow-options">
+      <button type="button" class="workflow-btn" data-workflow="video">
+        <span class="wf-title">🎬 我要一支帶繁體中文字幕的影片</span>
+        <span class="wf-desc">看國外遊戲攻略、教學影片，想要能直接看的成品影片。會把翻譯好的字幕燒進影片畫面。</span>
+      </button>
+      <button type="button" class="workflow-btn" data-workflow="text">
+        <span class="wf-title">📝 我只要這支影片的文字</span>
+        <span class="wf-desc">看訪談、演講，只要逐字稿與翻譯就好。不燒字幕進影片，所以速度明顯較快。</span>
+        <span class="wf-badge">較快，不產生影片檔</span>
+      </button>
+    </div>
+  </section>
+
+  <!-- 輸入來源 -->
+  <section id="view-input" class="card hidden">
+    <button type="button" id="back-btn" class="link-btn">← 換一個</button>
+    <h2 id="input-title">來源</h2>
+    <p id="input-hint" class="hint"></p>
+    <form id="job-form">
+      <input
+        id="source-input"
+        type="text"
+        placeholder="貼上 YouTube 網址，或輸入本機影片檔的絕對路徑"
+        autocomplete="off"
+        required
+      />
+      <button type="submit" id="submit-btn" class="primary-btn">開始處理</button>
+    </form>
+    <p id="form-error" class="error-text hidden" style="margin-top: 12px;"></p>
+  </section>
+
+  <!-- 處理中 -->
+  <section id="view-progress" class="card hidden">
+    <h2>處理中</h2>
+    <p id="elapsed-line" class="elapsed-line"></p>
+    <ol id="steps-list-progress" class="steps-list"></ol>
+  </section>
+
+  <!-- 完成 -->
+  <section id="view-done" class="card hidden">
+    <h2>✅ 完成了</h2>
+    <p id="done-summary" class="elapsed-line"></p>
+    <ol id="steps-list-done" class="steps-list"></ol>
+    <ul id="outputs-list" class="outputs-list"></ul>
+    <button type="button" id="reset-btn-done" class="secondary-btn" style="margin-top: 20px;">處理下一支影片</button>
+  </section>
+
+  <!-- 失敗 -->
+  <section id="view-error" class="card hidden">
+    <h2>❌ 發生錯誤</h2>
+    <p id="error-step-line" class="elapsed-line"></p>
+    <p id="error-message" class="error-text"></p>
+    <ol id="steps-list-error" class="steps-list" style="margin-top: 16px;"></ol>
+    <button type="button" id="reset-btn-error" class="secondary-btn" style="margin-top: 20px;">重新開始</button>
+  </section>
+
+  <!-- 409 已有工作在跑 -->
+  <section id="view-conflict" class="card hidden">
+    <h2>⏳ 目前有工作在進行中</h2>
+    <p id="conflict-message" class="error-text"></p>
+    <p class="hint" style="margin-top: 12px;">這個工具一次只能處理一支影片。請等它結束後再試一次。</p>
+    <button type="button" id="conflict-back-btn" class="secondary-btn" style="margin-top: 8px;">好，我知道了</button>
+  </section>
+
+  <!-- 網路 / 後端連不上 -->
+  <section id="view-network-error" class="card hidden">
+    <h2>🔌 連不上後端服務</h2>
+    <p id="network-error-message" class="error-text"></p>
+    <p class="hint" style="margin-top: 12px;">請確認本機的處理服務是否已經啟動，然後再試一次。</p>
+    <button type="button" id="network-retry-btn" class="primary-btn" style="margin-top: 8px;">重試</button>
+  </section>
+
+  <footer class="app-footer">
+    <p id="benchmark-note">
+      參考：約 40 秒的影片跑「只要文字」約 1 分鐘；一支 8 分鐘的真實影片轉錄約需 7 分鐘。請耐心等候。
+    </p>
+  </footer>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  // ============================================================
+  // MOCK 開關 —— 交付時必須是 false。
+  // 開啟後可用以下方式在瀏覽器裡實際跑過每一種畫面（不需要後端）：
+  //   - 一般 https:// 網址              → 正常跑完全部步驟 → done
+  //   - 不是 http(s) 開頭的路徑（本機檔案）→ download 這步會是 skipped
+  //   - 來源文字包含 "ERROR"             → translate 這步會失敗 → error 畫面
+  //   - 來源文字包含 "409TEST"           → 送出時直接模擬 409（已有工作在跑）
+  // ============================================================
+  const MOCK = false;
+
+  const STEP_LABELS = {
+    download: "下載影片",
+    transcribe: "產生逐字稿",
+    translate: "翻譯成繁體中文",
+    format: "整理成 Markdown",
+    embed: "將字幕燒進影片",
+  };
+
+  const STATUS_ICON = {
+    pending: "○",
+    running: "⟳",
+    done: "✓",
+    skipped: "–",
+    error: "✕",
+  };
+
+  const STATUS_LABEL = {
+    pending: "等待中",
+    running: "進行中",
+    done: "完成",
+    skipped: "略過",
+    error: "失敗",
+  };
+
+  class ApiError extends Error {
+    constructor(kind, message) {
+      super(message);
+      this.kind = kind;
+    }
+  }
+
+  // ---------------- DOM refs ----------------
+  const viewIds = [
+    "view-select",
+    "view-input",
+    "view-progress",
+    "view-done",
+    "view-error",
+    "view-conflict",
+    "view-network-error",
+  ];
+  const views = {};
+  viewIds.forEach((id) => (views[id] = document.getElementById(id)));
+
+  const workflowButtons = document.querySelectorAll(".workflow-btn");
+  const backBtn = document.getElementById("back-btn");
+  const inputTitle = document.getElementById("input-title");
+  const inputHint = document.getElementById("input-hint");
+  const jobForm = document.getElementById("job-form");
+  const sourceInput = document.getElementById("source-input");
+  const submitBtn = document.getElementById("submit-btn");
+  const formError = document.getElementById("form-error");
+
+  const elapsedLine = document.getElementById("elapsed-line");
+  const stepsListProgress = document.getElementById("steps-list-progress");
+
+  const doneSummary = document.getElementById("done-summary");
+  const stepsListDone = document.getElementById("steps-list-done");
+  const outputsList = document.getElementById("outputs-list");
+  const resetBtnDone = document.getElementById("reset-btn-done");
+
+  const errorStepLine = document.getElementById("error-step-line");
+  const errorMessage = document.getElementById("error-message");
+  const stepsListError = document.getElementById("steps-list-error");
+  const resetBtnError = document.getElementById("reset-btn-error");
+
+  const conflictMessage = document.getElementById("conflict-message");
+  const conflictBackBtn = document.getElementById("conflict-back-btn");
+
+  const networkErrorMessage = document.getElementById("network-error-message");
+  const networkRetryBtn = document.getElementById("network-retry-btn");
+
+  // ---------------- App state ----------------
+  const state = {
+    workflow: null,
+    jobId: null,
+    pollTimer: null,
+    retryAction: null,
+  };
+
+  function showView(name) {
+    viewIds.forEach((id) => views[id].classList.toggle("hidden", id !== name));
+  }
+
+  // ---------------- Helpers ----------------
+  function formatBytes(n) {
+    if (typeof n !== "number" || isNaN(n)) return "";
+    if (n < 1024) return n + " B";
+    const units = ["KB", "MB", "GB", "TB"];
+    let v = n;
+    let i = -1;
+    do {
+      v /= 1024;
+      i++;
+    } while (v >= 1024 && i < units.length - 1);
+    return (v < 10 ? v.toFixed(1) : Math.round(v)) + " " + units[i];
+  }
+
+  function formatElapsed(seconds) {
+    const sec = Math.max(0, Math.round(seconds));
+    const m = Math.floor(sec / 60);
+    const s = sec % 60;
+    if (m <= 0) return s + " 秒";
+    return m + " 分 " + s + " 秒";
+  }
+
+  function renderSteps(container, steps) {
+    container.innerHTML = "";
+    steps.forEach((s) => {
+      const li = document.createElement("li");
+      li.className = "step step-" + s.status;
+
+      const icon = document.createElement("span");
+      icon.className = "step-icon";
+      icon.textContent = STATUS_ICON[s.status] || "?";
+
+      const label = document.createElement("span");
+      label.className = "step-label";
+      label.textContent = STEP_LABELS[s.name] || s.name;
+
+      const statusText = document.createElement("span");
+      statusText.className = "step-status-text";
+      statusText.textContent = STATUS_LABEL[s.status] || s.status;
+
+      li.appendChild(icon);
+      li.appendChild(label);
+      li.appendChild(statusText);
+
+      if (s.detail) {
+        const detail = document.createElement("div");
+        detail.className = "step-detail";
+        detail.textContent = s.detail;
+        li.appendChild(detail);
+      }
+      container.appendChild(li);
+    });
+  }
+
+  function currentStepLabel(steps) {
+    const running = steps.find((s) => s.status === "running");
+    if (running) return STEP_LABELS[running.name] || running.name;
+    const lastActive = [...steps].reverse().find((s) => s.status === "done" || s.status === "skipped");
+    if (lastActive) return STEP_LABELS[lastActive.name] || lastActive.name;
+    return "準備中";
+  }
+
+  function setFormBusy(busy) {
+    sourceInput.disabled = busy;
+    submitBtn.disabled = busy;
+    submitBtn.textContent = busy ? "送出中…" : "開始處理";
+  }
+
+  function showFormError(msg) {
+    formError.textContent = msg;
+    formError.classList.remove("hidden");
+  }
+
+  function clearFormError() {
+    formError.classList.add("hidden");
+    formError.textContent = "";
+  }
+
+  // ---------------- Workflow selection ----------------
+  workflowButtons.forEach((btn) => {
+    btn.addEventListener("click", () => selectWorkflow(btn.dataset.workflow));
+  });
+
+  function selectWorkflow(wf) {
+    state.workflow = wf;
+    clearFormError();
+    sourceInput.value = "";
+    setFormBusy(false);
+    if (wf === "video") {
+      inputTitle.textContent = "貼上要燒字幕的影片來源";
+      inputHint.textContent =
+        "完成後會產生：原文 SRT、翻譯 SRT、翻譯 Markdown、原文 Markdown、字幕影片。這條路徑會把字幕燒進影片畫面，通常花費時間較長。";
+    } else {
+      inputTitle.textContent = "貼上要轉文字的影片來源";
+      inputHint.textContent =
+        "完成後會產生：原文 SRT、翻譯 SRT、翻譯 Markdown、原文 Markdown。不會產生影片檔，速度比「帶字幕影片」明顯快。";
+    }
+    showView("view-input");
+    sourceInput.focus();
+  }
+
+  backBtn.addEventListener("click", () => {
+    showView("view-select");
+  });
+
+  // ---------------- Form submit ----------------
+  jobForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    clearFormError();
+    const source = sourceInput.value.trim();
+    if (!source) {
+      showFormError("請輸入 YouTube 網址或本機檔案的絕對路徑。");
+      return;
+    }
+    setFormBusy(true);
+    try {
+      const job = await apiPostJob(state.workflow, source);
+      state.jobId = job.job_id;
+      startPolling();
+    } catch (err) {
+      setFormBusy(false);
+      handleSubmitError(err, source);
+    }
+  });
+
+  function handleSubmitError(err, source) {
+    if (err.kind === "conflict") {
+      conflictMessage.textContent = err.message;
+      showView("view-conflict");
+    } else if (err.kind === "invalid") {
+      showFormError(err.message);
+    } else if (err.kind === "network") {
+      state.retryAction = async () => {
+        setFormBusy(true);
+        try {
+          const job = await apiPostJob(state.workflow, source);
+          state.jobId = job.job_id;
+          startPolling();
+        } catch (err2) {
+          setFormBusy(false);
+          handleSubmitError(err2, source);
+        }
+      };
+      networkErrorMessage.textContent = err.message;
+      showView("view-network-error");
+    } else {
+      showFormError(err.message || "未知錯誤，請稍後再試。");
+    }
+  }
+
+  conflictBackBtn.addEventListener("click", () => {
+    showView("view-input");
+  });
+
+  networkRetryBtn.addEventListener("click", () => {
+    if (state.retryAction) state.retryAction();
+  });
+
+  // ---------------- Polling ----------------
+  function startPolling() {
+    showView("view-progress");
+    stepsListProgress.innerHTML = "";
+    elapsedLine.innerHTML = "已送出，等待第一次回報…";
+    poll();
+    stopPolling();
+    state.pollTimer = setInterval(poll, 1000);
+  }
+
+  function stopPolling() {
+    if (state.pollTimer) {
+      clearInterval(state.pollTimer);
+      state.pollTimer = null;
+    }
+  }
+
+  async function poll() {
+    try {
+      const job = await apiGetJob(state.jobId);
+      renderProgress(job);
+      if (job.status === "done") {
+        stopPolling();
+        showDone(job);
+      } else if (job.status === "error") {
+        stopPolling();
+        showError(job);
+      }
+    } catch (err) {
+      stopPolling();
+      state.retryAction = () => startPolling();
+      networkErrorMessage.textContent = err.message || "輪詢時失去與後端的連線。";
+      showView("view-network-error");
+    }
+  }
+
+  function renderProgress(job) {
+    const elapsed = Date.now() / 1000 - job.started_at;
+    // 步驟名稱來自伺服器，用 DOM 節點組裝而不是 innerHTML 串接
+    elapsedLine.textContent = "已經過 ";
+    const elapsedValue = document.createElement("strong");
+    elapsedValue.textContent = formatElapsed(elapsed);
+    elapsedLine.appendChild(elapsedValue);
+    elapsedLine.appendChild(
+      document.createTextNode(" · 目前在「" + currentStepLabel(job.steps) + "」")
+    );
+    renderSteps(stepsListProgress, job.steps);
+  }
+
+  function showDone(job) {
+    const total = (job.finished_at || Date.now() / 1000) - job.started_at;
+    doneSummary.textContent = "共花費 " + formatElapsed(total) + "。";
+    renderSteps(stepsListDone, job.steps);
+    outputsList.innerHTML = "";
+    (job.outputs || []).forEach((o) => {
+      const li = document.createElement("li");
+      li.className = "output-item";
+
+      const left = document.createElement("div");
+      const title = document.createElement("div");
+      title.textContent = o.label;
+      const meta = document.createElement("div");
+      meta.className = "output-meta";
+      meta.textContent = o.filename + " · " + formatBytes(o.bytes);
+      left.appendChild(title);
+      left.appendChild(meta);
+
+      const link = document.createElement("a");
+      link.className = "download-link";
+      link.href = o.url;
+      link.textContent = "下載";
+      link.setAttribute("download", o.filename || "");
+      link.setAttribute("rel", "noopener");
+
+      li.appendChild(left);
+      li.appendChild(link);
+      outputsList.appendChild(li);
+    });
+    showView("view-done");
+  }
+
+  function showError(job) {
+    const failedStep = (job.steps || []).find((s) => s.status === "error");
+    errorStepLine.textContent = failedStep
+      ? "在「" + (STEP_LABELS[failedStep.name] || failedStep.name) + "」這一步失敗"
+      : "處理過程中發生錯誤";
+    errorMessage.textContent = job.error || "未提供錯誤訊息。";
+    renderSteps(stepsListError, job.steps || []);
+    showView("view-error");
+  }
+
+  function resetToSelect() {
+    stopPolling();
+    state.jobId = null;
+    state.workflow = null;
+    sourceInput.value = "";
+    clearFormError();
+    setFormBusy(false);
+    showView("view-select");
+  }
+
+  resetBtnDone.addEventListener("click", resetToSelect);
+  resetBtnError.addEventListener("click", resetToSelect);
+
+  // ---------------- Real API ----------------
+  async function apiPostJob(workflow, source) {
+    if (MOCK) return mockPostJob(workflow, source);
+    let res;
+    try {
+      res = await fetch("/api/jobs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workflow, source }),
+      });
+    } catch (e) {
+      throw new ApiError("network", "連不上後端服務，請確認程式是否已啟動。");
+    }
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+      /* 沒有 body 或非 JSON，忽略 */
+    }
+    if (res.status === 201) return data;
+    if (res.status === 409) throw new ApiError("conflict", data.error || "目前有工作在進行中，請稍後再試。");
+    if (res.status === 400) throw new ApiError("invalid", data.error || "輸入無效，請確認網址或路徑。");
+    throw new ApiError("unknown", data.error || "伺服器錯誤（" + res.status + "）");
+  }
+
+  async function apiGetJob(jobId) {
+    if (MOCK) return mockGetJob(jobId);
+    let res;
+    try {
+      res = await fetch("/api/jobs/" + encodeURIComponent(jobId));
+    } catch (e) {
+      throw new ApiError("network", "輪詢時失去與後端的連線，請確認程式是否還在執行。");
+    }
+    let data = {};
+    try {
+      data = await res.json();
+    } catch (e) {
+      /* ignore */
+    }
+    if (res.status === 200) return data;
+    if (res.status === 404) throw new ApiError("notfound", data.error || "找不到這個工作。");
+    throw new ApiError("unknown", data.error || "伺服器錯誤（" + res.status + "）");
+  }
+
+  // ============================================================
+  // MOCK 實作 —— 僅在 MOCK === true 時使用，交付版不會執行到這裡。
+  // 狀態是「送出時間 + 目前時間」的純函式，跟真正輪詢後端的行為一致：
+  // 每次呼叫都根據經過的秒數重新算出目前每一步的狀態。
+  // ============================================================
+  const MOCK_JOBS = {};
+
+  function mockUuid() {
+    return "mock-" + Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
+  }
+
+  function mockPostJob(workflow, source) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        if (/409TEST/i.test(source)) {
+          reject(new ApiError("conflict", "目前有工作在進行中，請等它結束後再試。（模擬 409）"));
+          return;
+        }
+        const jobId = mockUuid();
+        const isLocal = !/^https?:\/\//i.test(source);
+        const hasError = /ERROR/i.test(source);
+        const names =
+          workflow === "video"
+            ? ["download", "transcribe", "translate", "format", "embed"]
+            : ["download", "transcribe", "translate", "format"];
+        MOCK_JOBS[jobId] = {
+          job_id: jobId,
+          workflow: workflow,
+          source: source,
+          started_at: Date.now() / 1000,
+          names: names,
+          isLocal: isLocal,
+          errorStep: hasError ? "translate" : null,
+          durations: { download: 3, transcribe: 4, translate: 3, format: 2, embed: 5 },
+        };
+        resolve({ job_id: jobId });
+      }, 250);
+    });
+  }
+
+  function mockGetJob(jobId) {
+    return new Promise((resolve, reject) => {
+      setTimeout(() => {
+        const def = MOCK_JOBS[jobId];
+        if (!def) {
+          reject(new ApiError("notfound", "找不到這個工作。"));
+          return;
+        }
+        resolve(mockComputeJobState(def));
+      }, 150);
+    });
+  }
+
+  function mockOutputs(workflow) {
+    const base = [
+      { label: "原文 SRT", filename: "original.srt", url: "/api/download/mock/original.srt", bytes: 8214 },
+      { label: "翻譯 SRT", filename: "translated.srt", url: "/api/download/mock/translated.srt", bytes: 9033 },
+      { label: "翻譯 Markdown", filename: "translated.md", url: "/api/download/mock/translated.md", bytes: 15320 },
+      { label: "原文 Markdown", filename: "original.md", url: "/api/download/mock/original.md", bytes: 14210 },
+    ];
+    if (workflow === "video") {
+      base.push({ label: "字幕影片", filename: "output.mp4", url: "/api/download/mock/output.mp4", bytes: 48213120 });
+    }
+    return base;
+  }
+
+  function mockComputeJobState(def) {
+    const now = Date.now() / 1000;
+    const elapsed = now - def.started_at;
+    let cursor = 0;
+    const steps = [];
+    let overallStatus = "running";
+    let finishedAt = null;
+    let errorMsg = null;
+    let stopped = false;
+
+    for (const name of def.names) {
+      if (stopped) {
+        steps.push({ name: name, status: "pending", detail: "" });
+        continue;
+      }
+      if (name === "download" && def.isLocal) {
+        steps.push({ name: name, status: "skipped", detail: "本機檔案，略過下載" });
+        continue;
+      }
+      const dur = def.durations[name];
+      if (name === def.errorStep) {
+        const errAt = cursor + Math.min(1, dur);
+        if (elapsed < cursor) {
+          steps.push({ name: name, status: "pending", detail: "" });
+        } else if (elapsed < errAt) {
+          steps.push({ name: name, status: "running", detail: "" });
+        } else {
+          steps.push({ name: name, status: "error", detail: "翻譯服務逾時（模擬）" });
+          overallStatus = "error";
+          finishedAt = def.started_at + errAt;
+          errorMsg = "翻譯步驟逾時失敗（這是 MOCK 模式產生的測試錯誤）";
+          stopped = true;
+        }
+        cursor += dur;
+        continue;
+      }
+      if (elapsed < cursor) {
+        steps.push({ name: name, status: "pending", detail: "" });
+      } else if (elapsed < cursor + dur) {
+        steps.push({ name: name, status: "running", detail: "" });
+      } else {
+        steps.push({ name: name, status: "done", detail: "" });
+      }
+      cursor += dur;
+    }
+
+    if (!stopped && steps.every((s) => s.status === "done" || s.status === "skipped")) {
+      overallStatus = "done";
+      finishedAt = def.started_at + cursor;
+    }
+
+    return {
+      job_id: def.job_id,
+      workflow: def.workflow,
+      source: def.source,
+      status: overallStatus,
+      started_at: def.started_at,
+      finished_at: finishedAt,
+      steps: steps,
+      outputs: overallStatus === "done" ? mockOutputs(def.workflow) : [],
+      error: errorMsg,
+    };
+  }
+})();
+</script>
+</body>
+</html>
