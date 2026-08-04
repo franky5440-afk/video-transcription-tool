@@ -109,7 +109,10 @@ rm -f "$SP/torch/bin/protoc" "$SP/torch/bin/protoc-3.13.0.0"
 rm -f "$SP/argparse.py" && rm -rf "$SP/argparse-1.4.0.dist-info"
 
 echo "== bundling the six feature modules + cli entry =="
-for m in $MODULES cli.py; do
+# language_detect.py sits outside MODULES on purpose: that list means the six
+# frozen feature modules, while this one belongs to the layers above them. Both
+# cli.py and webui/server.py import it, so it has to ship either way.
+for m in $MODULES cli.py language_detect.py; do
   cp "$ROOT/$m" "$APPDIR/app/"
 done
 

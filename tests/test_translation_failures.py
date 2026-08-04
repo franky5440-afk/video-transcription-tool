@@ -5,6 +5,7 @@ Test script for translation failure scenarios.
 
 import os
 import sys
+import time
 
 # Add project root to path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -29,11 +30,27 @@ class FakeGoogleTranslator:
 
     _responses = [""]
     _calls = 0
+    _by_text = None
+    _delay = 0.0
 
     @classmethod
     def script(cls, responses):
         """Set the response sequence and rewind the counter."""
         cls._responses = list(responses)
+        cls._calls = 0
+        cls._by_text = None
+
+    @classmethod
+    def script_by_text(cls, mapping):
+        """Answer according to the input text rather than the call order.
+
+        translate_transcription sends its lines concurrently, so call order is
+        no longer deterministic and a positional script would pair lines with
+        translations at random. Keying on the input is order independent, and
+        stricter besides: it catches a translation landing on the wrong line,
+        which a positional script cannot see at all.
+        """
+        cls._by_text = dict(mapping)
         cls._calls = 0
 
     def __init__(self, source='auto', target='zh-TW'):
@@ -41,6 +58,10 @@ class FakeGoogleTranslator:
         self.target = target
 
     def translate(self, text):
+        if FakeGoogleTranslator._delay:
+            time.sleep(FakeGoogleTranslator._delay)
+        if FakeGoogleTranslator._by_text is not None:
+            return FakeGoogleTranslator._by_text[text]
         index = FakeGoogleTranslator._calls
         FakeGoogleTranslator._calls += 1
         if index < len(FakeGoogleTranslator._responses):
@@ -103,8 +124,12 @@ def test_transcription_preserves_lines_on_failure():
     
     original_google_translator = translation_service.GoogleTranslator
     
-    # A single entry repeats, so every line fails on both attempts.
-    FakeGoogleTranslator.script([ERROR_PAGE])
+    # Every line fails on both attempts, whatever order they are sent in.
+    FakeGoogleTranslator.script_by_text({
+        "Hello": ERROR_PAGE,
+        "World": ERROR_PAGE,
+        "Test": ERROR_PAGE,
+    })
     translation_service.GoogleTranslator = FakeGoogleTranslator
 
     try:
@@ -151,8 +176,13 @@ def test_all_normal_translation():
     
     original_google_translator = translation_service.GoogleTranslator
     
-    # One successful translation per line, no retries expected.
-    FakeGoogleTranslator.script(["你好", "世界", "測試"])
+    # One successful translation per line, no retries expected. Keyed by input
+    # so that a line receiving another line's translation fails the test.
+    FakeGoogleTranslator.script_by_text({
+        "Hello": "你好",
+        "World": "世界",
+        "Test": "測試",
+    })
     translation_service.GoogleTranslator = FakeGoogleTranslator
     
     try:
@@ -191,6 +221,61 @@ def test_all_normal_translation():
         translation_service.GoogleTranslator = original_google_translator
 
 
+def test_concurrent_lines_keep_their_own_translation():
+    """Scenario 5: Many slow lines -> sent concurrently, each keeps its own translation."""
+    print("\n=== Test 5: Concurrent lines keep their own translation ===")
+
+    original_google_translator = translation_service.GoogleTranslator
+
+    line_count = 40
+    delay = 0.05
+    sources = [f"line number {i}" for i in range(line_count)]
+    mapping = {source: f"譯文{i}" for i, source in enumerate(sources)}
+
+    FakeGoogleTranslator.script_by_text(mapping)
+    FakeGoogleTranslator._delay = delay
+    translation_service.GoogleTranslator = FakeGoogleTranslator
+
+    try:
+        input_text = '\n'.join(
+            f"[00:00:{i:02d}] {source}" for i, source in enumerate(sources))
+
+        started = time.monotonic()
+        result = translation_service.translate_transcription(input_text)
+        elapsed = time.monotonic() - started
+
+        if result is None:
+            print("❌ Test 5 failed: Result is None")
+            return False
+
+        output_lines = result.split('\n')
+        if len(output_lines) != line_count:
+            print(f"❌ Test 5 failed: Line count mismatch. Expected {line_count}, got {len(output_lines)}")
+            return False
+
+        # The point of the test: line i must carry translation i, not whichever
+        # response happened to come back first.
+        for i, output_line in enumerate(output_lines):
+            expected = f"[00:00:{i:02d}] 譯文{i}"
+            if output_line != expected:
+                print(f"❌ Test 5 failed: Line {i} mismatched. Expected {expected!r}, got {output_line!r}")
+                return False
+
+        # Sequential would take line_count * delay; concurrency has to beat that
+        # by a wide margin or the pool is not actually overlapping anything.
+        sequential = line_count * delay
+        if elapsed > sequential / 2:
+            print(f"❌ Test 5 failed: No concurrency. Took {elapsed:.2f}s, sequential would be {sequential:.2f}s")
+            return False
+
+        print(f"✅ Test 5 passed: {line_count} lines correctly paired, "
+              f"{elapsed:.2f}s vs {sequential:.2f}s sequential")
+        return True
+    finally:
+        FakeGoogleTranslator._delay = 0.0
+        translation_service.GoogleTranslator = original_google_translator
+
+
 def main():
     """Run all tests."""
     print("Starting translation failure tests...")
@@ -200,6 +285,7 @@ def main():
         test_retry_then_success,
         test_transcription_preserves_lines_on_failure,
         test_all_normal_translation,
+        test_concurrent_lines_keep_their_own_translation,
     ]
     
     passed = []

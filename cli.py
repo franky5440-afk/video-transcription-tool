@@ -22,6 +22,7 @@ import sys
 from youtube_downloader import download_youtube_video
 from transcription_service import transcribe_video, parse_srt_to_text
 from translation_service import translate_transcription
+from language_detect import is_traditional_chinese
 from output_formatter import format_to_markdown, save_to_markdown_file
 from video_processor import embed_subtitles_in_video, convert_to_mp4, process_video_with_subtitles
 from main import create_srt_from_transcription
@@ -30,6 +31,11 @@ from main import create_srt_from_transcription
 def fail(msg: str) -> int:
     print(f"ERROR: {msg}", file=sys.stderr)
     return 1
+
+
+def note(msg: str) -> None:
+    """Diagnostics go to stderr so that C2 still holds on stdout."""
+    print(f"NOTE: {msg}", file=sys.stderr)
 
 
 def cmd_all(args) -> int:
@@ -52,9 +58,15 @@ def cmd_all(args) -> int:
     original_transcription = parse_srt_to_text(transcription_file)
     if not original_transcription:
         return fail("could not parse transcription")
-    translated_transcription = translate_transcription(original_transcription)
-    if not translated_transcription:
-        return fail("translation failed")
+    # Translating text that is already Traditional Chinese rewrites it rather
+    # than translating it, so skip the round trip entirely.
+    if is_traditional_chinese(original_transcription):
+        note("source is already Traditional Chinese, skipping translation")
+        translated_transcription = original_transcription
+    else:
+        translated_transcription = translate_transcription(original_transcription)
+        if not translated_transcription:
+            return fail("translation failed")
     translated_markdown, original_markdown = format_to_markdown(
         translated_transcription, original_transcription, os.path.basename(video_file))
     if not translated_markdown or not original_markdown:
@@ -102,9 +114,13 @@ def cmd_translate(args) -> int:
     original_text = parse_srt_to_text(args.input)
     if not original_text:
         return fail(f"could not parse SRT file: {args.input}")
-    translated_text = translate_transcription(original_text)
-    if not translated_text:
-        return fail("translation failed")
+    if is_traditional_chinese(original_text):
+        note("source is already Traditional Chinese, skipping translation")
+        translated_text = original_text
+    else:
+        translated_text = translate_transcription(original_text)
+        if not translated_text:
+            return fail("translation failed")
     translated_srt = os.path.join(out_dir, "transcription_translated.srt")
     if not create_srt_from_transcription(translated_text, translated_srt):
         return fail("could not generate translated SRT file")

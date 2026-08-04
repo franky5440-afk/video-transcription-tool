@@ -40,6 +40,7 @@ from werkzeug.serving import make_server
 from youtube_downloader import download_youtube_video
 from transcription_service import transcribe_video, parse_srt_to_text
 from translation_service import translate_transcription
+from language_detect import is_traditional_chinese
 from output_formatter import format_to_markdown, save_to_markdown_file
 from video_processor import process_video_with_subtitles
 from main import create_srt_from_transcription
@@ -152,16 +153,34 @@ def _run_job(job: dict) -> None:
         if not original_text:
             _fail(job, "translate", "could not parse the transcription")
             return
-        translated_text = translate_transcription(original_text)
-        if not translated_text:
-            _fail(job, "translate", "translation failed")
-            return
+        # A Chinese source is already transcribed as Traditional Chinese, so the
+        # translator has nothing to translate and rewrites it instead: measured
+        # 2026-08-05, 519 of 850 lines came back altered, including outright
+        # meaning changes. Skipping also drops the slowest step of the run.
+        already_chinese = is_traditional_chinese(original_text)
+        if already_chinese:
+            translated_text = original_text
+        else:
+            translated_text = translate_transcription(original_text)
+            if not translated_text:
+                _fail(job, "translate", "translation failed")
+                return
+
+        # Written either way: the embed step burns this file into the video, and
+        # when the source is already Chinese those are the subtitles we want.
         translated_srt = os.path.join(job_dir, "transcription_translated.srt")
         if not create_srt_from_transcription(translated_text, translated_srt):
             _fail(job, "translate", "could not generate the translated SRT file")
             return
-        _add_output(job, "翻譯 SRT", translated_srt)
-        _set_step(job, "translate", "done", os.path.basename(translated_srt))
+
+        if already_chinese:
+            # Not listed as an output: it is a byte-for-byte copy of the
+            # transcript, and offering it as a "translation" would be a lie.
+            _set_step(job, "translate", "skipped",
+                      "來源已是繁體中文，直接使用原文")
+        else:
+            _add_output(job, "翻譯 SRT", translated_srt)
+            _set_step(job, "translate", "done", os.path.basename(translated_srt))
 
         # --- format ---------------------------------------------------------
         _set_step(job, "format", "running")
@@ -174,9 +193,15 @@ def _run_job(job: dict) -> None:
         if not saved[0] or not saved[1]:
             _fail(job, "format", "could not save the markdown files")
             return
-        _add_output(job, "翻譯 Markdown", saved[0])
-        _add_output(job, "原文 Markdown", saved[1])
-        _set_step(job, "format", "done", f"{os.path.basename(saved[0])}, {os.path.basename(saved[1])}")
+        if already_chinese:
+            # Same reasoning as the translated SRT above: it duplicates the
+            # transcript, so only the original is offered.
+            _add_output(job, "原文 Markdown", saved[1])
+            _set_step(job, "format", "done", os.path.basename(saved[1]))
+        else:
+            _add_output(job, "翻譯 Markdown", saved[0])
+            _add_output(job, "原文 Markdown", saved[1])
+            _set_step(job, "format", "done", f"{os.path.basename(saved[0])}, {os.path.basename(saved[1])}")
 
         # --- embed (video workflow only) ------------------------------------
         if job["workflow"] == "video":
