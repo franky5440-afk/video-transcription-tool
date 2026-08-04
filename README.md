@@ -3,144 +3,138 @@
 
 [English](#english) | [繁體中文](#繁體中文)
 
+Turn a YouTube link or a local video into a Traditional Chinese transcript — and, when you want one, a video with the subtitles burned in.
+
 ---
 
-## Only availble in Linux, expecting Mac OS shortly
+## Only available in Linux, expecting Mac OS shortly
 
 ## English
 
-### Features
+### What you get
 
-- **YouTube Download**: Download videos from YouTube URLs (includes audio)
-- **Local Video Support**: Process local video files directly
-- **Automatic Transcription**: Generate timestamps and text using Whisper
-- **Traditional Chinese Translation**: Translate transcriptions using Google Translator
-- **Markdown Output**: Save results in clean Markdown format
-- **Batch Processing**: Handle multiple videos at once
-- **Subtitle Embedding**: Embed translated subtitles into videos
-- **MP4 Conversion**: Convert videos to MP4 format with H.264/AAC
-- **Standalone Tools**: Use video processing features independently
+Two ways to use it, both driving the same pipeline:
 
-### Requirements
+- **Web UI** — the normal way. Double-click the AppImage and a local page opens in your browser. Nothing is uploaded anywhere; everything runs on your own machine.
+- **Command line** — seven subcommands, for scripting or for running one step at a time.
 
-- Python 3.7+
-- `yt-dlp` for YouTube downloads
-- `whisper` for transcription
-- `deep-translator` for translation
-- `ffmpeg` for video processing (install separately)
+### The two workflows
 
-### Installation
+The web UI does not offer six equal buttons; it offers the two things people actually want:
+
+| Workflow | Steps | Use it when |
+|---|---|---|
+| **Video** | download → transcribe → translate → format → **embed** | you want a video file with Traditional Chinese subtitles burned in |
+| **Text** | download → transcribe → translate → format | you only want the words — an interview, a talk, a lecture |
+
+**Text deliberately skips the embed step.** Burning subtitles re-encodes the whole video and is by far the slowest part of the run; if you are going to read a transcript, waiting for it produces a file you will never open.
+
+Both workflows produce all four text artifacts, so the original language is always available alongside the translation.
+
+### Quick start (AppImage)
+
+There is no prebuilt download yet — build it once from source:
 
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/video-transcription-tool.git
+git clone https://github.com/franky5440-afk/video-transcription-tool.git
 cd video-transcription-tool
 
-# Create virtual environment (recommended)
 python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate  # Windows
+venv/bin/pip install yt-dlp openai-whisper deep-translator flask
 
-# Install dependencies
-pip install -r requirements.txt
+# fetch the whisper "base" model once; the build bundles it
+venv/bin/python -c "import whisper; whisper.load_model('base')"
 
-# Install ffmpeg (required for video processing)
-sudo apt install ffmpeg  # Ubuntu/Debian
-brew install ffmpeg     # macOS
+./build_appimage/build.sh
 ```
 
-### Usage
+This produces `video-transcription-tool.AppImage` (~460 MB — it carries its own Python, PyTorch, ffmpeg and the whisper model, so the machine you run it on needs nothing installed).
 
-#### 1. Full Pipeline (Transcription + Translation + Video Processing)
+Then just **double-click it**. The web UI opens in your browser.
+
+The build downloads a CPU-only PyTorch wheel, a static ffmpeg and appimagetool into `build_appimage/tools/` on first run and reuses them afterwards.
+
+### Running from source instead
 
 ```bash
-python main.py "video_url_or_path" --output "./output"
+venv/bin/python cli.py serve      # web UI, same as double-clicking the AppImage
 ```
 
-After transcription and translation, the tool will ask:
-```
-Continue with video processing? (y/n):
-```
+### Command line
 
-- `y` - Embed translated subtitles and convert to MP4
-- `n` - Skip video processing (you can do it later manually)
-
-#### 2. Standalone Video Processing (Embed Subtitles Only)
-
-**For this project's specific files:**
-```bash
-./ffmpeg_subtitles.sh
-```
-
-**For ANY video file:**
-```bash
-./ffmpeg_subtitles_general.sh input.mp4 subtitles.srt output.mp4
-```
-
-#### 3. Manual Video Processing (If You Skipped Step 1)
+Every subcommand takes `--output` and defaults to `./output`. Running the tool with no subcommand at all starts the web UI.
 
 ```bash
-# Convert translated Markdown to SRT
-python -c "
-from main import create_srt_from_transcription
-with open('transcription.md', 'r', encoding='utf-8') as f:
-    content = f.read()
-create_srt_from_transcription(content, 'transcription.srt')
-"
-
-# Embed subtitles using ffmpeg
-./ffmpeg_subtitles_general.sh video.mp4 transcription.srt output.mp4
+cli.py all         <url-or-file>          # full pipeline, ending in a subtitled MP4
+cli.py download    <url>                  # download a YouTube video
+cli.py transcribe  <video>                # video  -> SRT
+cli.py translate   <srt>                  # SRT    -> Traditional Chinese SRT + Markdown
+cli.py embed       <video> <srt>          # burn subtitles into a video
+cli.py mp4         <video>                # convert to MP4 (H.264 / AAC)
+cli.py serve       [--port 8713] [--no-browser]
 ```
 
-### Output Files
+### Output files
 
-- `transcription_original.md` - Original transcription with timestamps
-- `transcription_translated.md` - Traditional Chinese translation
-- `transcription_translated.srt` - SRT format for subtitle embedding
-- `video_with_subtitles.mp4` - Final video with embedded subtitles
+| File | Contents |
+|---|---|
+| `<video>.srt` | transcription in the original language |
+| `transcription_translated.srt` | Traditional Chinese subtitles |
+| `transcription_translated.md` | Traditional Chinese transcript |
+| `transcription_original.md` | original-language transcript |
+| `<video>_subtitled.mp4` | the video with subtitles burned in (video workflow only) |
 
-### Project Structure
+Web UI runs keep everything in `<output>/webui/<job_id>/`, so two runs can never overwrite each other.
+
+### Notes and limits
+
+- **Linux x86_64 only** for now.
+- **No progress percentage.** Whisper does not report progress, so the UI shows which step is running and how long it has been running — never an invented percentage.
+- **Transcription takes about as long as the video**, on a CPU-only machine with the bundled `base` model.
+- **The server keeps running after you close the browser tab.** Starting the tool again simply reopens the page. To stop it, press Ctrl+C in the terminal, or `pkill -f "cli[.]py"`.
+- Video encoding is software H.264 (`libx264`); AV1 sources are avoided at download time. Both are choices made for a machine with no hardware video acceleration.
+- The web UI binds `127.0.0.1` only. It reads local file paths you give it, so it is deliberately not reachable from your network.
+
+### Requirements (running from source)
+
+- Python 3.12
+- `yt-dlp`, `openai-whisper`, `deep-translator`, `flask`
+- `ffmpeg` on your PATH (`sudo apt install ffmpeg`)
+
+> `requirements.txt` currently lists `whisper`, which is an unrelated package on PyPI. Install `openai-whisper` as shown above.
+
+### Project structure
 
 ```
 .
-├── main.py                  # Main CLI application
-├── youtube_downloader.py    # YouTube video downloader
-├── transcription_service.py # Video transcription with Whisper
-├── translation_service.py   # Translation to Traditional Chinese
-├── output_formatter.py      # Markdown output formatting
-├── video_processor.py       # Video processing functions
-├── ffmpeg_subtitles.sh      # Project-specific ffmpeg script
-├── ffmpeg_subtitles_general.sh # General-purpose ffmpeg script
-├── embed_sub_fast.py        # Fast Python embedding script
-├── embed_sub_simple.py      # Standard Python embedding script
-├── requirements.txt         # Python dependencies
-├── README.md                # This file
-└── output/                  # Output directory
-    ├── video.mp4           # Downloaded video (with audio)
-    ├── transcription.srt    # Original subtitles
-    ├── transcription.md     # Translated transcription
-    └── video_with_subtitles.mp4 # Final output
+├── cli.py                   # subcommand layer (all/download/transcribe/translate/embed/mp4/serve)
+├── main.py                  # original interactive pipeline
+├── youtube_downloader.py    # YouTube download
+├── transcription_service.py # transcription (Whisper)
+├── translation_service.py   # translation to Traditional Chinese
+├── output_formatter.py      # Markdown formatting
+├── video_processor.py       # subtitle embedding, MP4 conversion
+├── webui/
+│   ├── server.py            # local Flask backend
+│   └── static/index.html    # the whole UI, one self-contained page
+├── build_appimage/build.sh  # builds the AppImage from scratch
+├── tests/                   # regression tests (no network, no real server)
+└── output/                  # results
 ```
-
-### Quality Settings
-
-- **Video**: H.264, CRF 23, slow preset (good quality)
-- **Audio**: AAC, 192kbps
-- **Subtitles**: Traditional Chinese, aligned with timestamps
 
 ### Troubleshooting
 
-1. **ffmpeg not found**: Install ffmpeg using your package manager
-2. **Timeout issues**: Use bash scripts instead of Python for long videos
-3. **Special characters in filenames**: Use the general-purpose script
-4. **Translation errors**: Check your internet connection
-5. **No audio in downloaded video**: Update yt-dlp and ensure proper format selection
-6. **Video processing fails silently**: Ensure output files are being overwritten properly and check for file permission issues
-7. **Subtitles show mixed languages**: Verify SRT file contains only translated text and regenerate if needed
+1. **ffmpeg not found** — install it with your package manager.
+2. **`import whisper` fails or behaves oddly** — you have the wrong `whisper` package; install `openai-whisper`.
+3. **Nothing happens when I start it again** — it is already running; the existing page is reopened instead of a second server being started.
+4. **Port 8713 is taken by something else** — start with `--port`.
+5. **Translation errors** — check your internet connection; translation is the only step that needs one.
+6. **Downloaded video has no audio** — update `yt-dlp`.
+7. **Filenames with special characters** — the tool handles them, but if you call ffmpeg yourself, quote the paths.
 
 ### License
 
-MIT License - See [LICENSE](LICENSE) for details.
+MIT License.
 
 ---
 
@@ -148,137 +142,129 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ## 繁體中文
 
-### 功能
+### 這個工具做什麼
 
-- **YouTube 下載**：從YouTube網址下載影片（包含音頻）
-- **本地影片支援**：直接處理本地影片檔案
-- **自動轉錄**：使用Whisper生成時間軸和文字
-- **繁體中文翻譯**：使用Google Translator翻譯轉錄內容
-- **Markdown輸出**：以乾淨的Markdown格式保存結果
-- **批次處理**：一次處理多個影片
-- **字幕嵌入**：將翻譯後的字幕嵌入影片
-- **MP4轉換**：轉換為MP4格式（H.264/AAC編碼）
-- **獨立工具**：獨立使用影片處理功能
+把 YouTube 影片或本機影片轉成繁體中文逐字稿；需要的話，還能把字幕直接燒進影片裡。兩種使用方式，跑的是同一條流程：
 
-### 需求
+- **網頁介面**——一般用法。雙擊 AppImage，瀏覽器就會打開一個本機頁面。**檔案不會上傳到任何地方**，全部在你自己的電腦上處理。
+- **命令列**——七個子命令，適合寫腳本或單獨執行某一步。
 
-- Python 3.7+
-- `yt-dlp` 用於YouTube下載
-- `whisper` 用於轉錄
-- `deep-translator` 用於翻譯
-- `ffmpeg` 用於影片處理（需單獨安裝）
+### 兩條工作流
 
-### 安裝
+網頁介面不是給你六個平等的按鈕，而是給你真正想要的兩件事：
+
+| 工作流 | 步驟 | 什麼時候用 |
+|---|---|---|
+| **影片** | 下載 → 轉錄 → 翻譯 → 格式化 → **燒字幕** | 你要一支帶繁體中文字幕的影片 |
+| **文字** | 下載 → 轉錄 → 翻譯 → 格式化 | 你只要文字——訪談、演講、課程 |
+
+**「文字」刻意不跑燒字幕這一步。** 燒字幕要把整支影片重新編碼，是全流程最慢的一環；如果你要的只是逐字稿，等它等於白等，還多出一個你不會打開的影片檔。
+
+四種文字產物**兩條工作流都會給**，所以原文永遠跟翻譯放在一起。
+
+### 快速開始（AppImage）
+
+目前還沒有現成的下載檔，先自己建一次：
 
 ```bash
-# 複製專案
-git clone https://github.com/yourusername/video-transcription-tool.git
+git clone https://github.com/franky5440-afk/video-transcription-tool.git
 cd video-transcription-tool
 
-# 創建虛擬環境（推薦）
 python3 -m venv venv
-source venv/bin/activate  # Linux/Mac
-# venv\Scripts\activate  # Windows
+venv/bin/pip install yt-dlp openai-whisper deep-translator flask
 
-# 安裝依賴套件
-pip install -r requirements.txt
+# 先抓一次 whisper 的 base 模型，打包時會一起包進去
+venv/bin/python -c "import whisper; whisper.load_model('base')"
 
-# 安裝ffmpeg（影片處理必需）
-sudo apt install ffmpeg  # Ubuntu/Debian
-brew install ffmpeg     # macOS
+./build_appimage/build.sh
 ```
 
-### 使用方式
+這會產生 `video-transcription-tool.AppImage`（約 460 MB——它自帶 Python、PyTorch、ffmpeg 與 whisper 模型，所以執行它的電腦不需要另外裝任何東西）。
 
-#### 1. 完整流程（轉錄 + 翻譯 + 影片處理）
+接著**直接雙擊它**，網頁介面就會在瀏覽器打開。
+
+首次建置會把 CPU 版 PyTorch、靜態 ffmpeg 與 appimagetool 下載到 `build_appimage/tools/`，之後重複使用。
+
+### 不打包，直接從原始碼跑
 
 ```bash
-python main.py "影片網址或本地路徑" --output "./output"
+venv/bin/python cli.py serve      # 網頁介面，與雙擊 AppImage 相同
 ```
 
-完成轉錄與翻譯後，系統會詢問：
-```
-Continue with video processing? (y/n):
-```
+### 命令列
 
-- `y` - 嵌入翻譯後的字幕並轉換為MP4
-- `n` - 跳過影片處理（稍後可手動執行）
-
-#### 2. 獨立影片處理（僅嵌入字幕）
-
-**針對本專案的特定檔案**：
-```bash
-./ffmpeg_subtitles.sh
-```
-
-**適用於任何影片檔案**：
-```bash
-./ffmpeg_subtitles_general.sh 輸入.mp4 字幕.srt 輸出.mp4
-```
-
-#### 3. 手動影片處理（如果您在步驟1跳過）
+每個子命令都吃 `--output`，預設 `./output`。**完全不給子命令時會直接開啟網頁介面。**
 
 ```bash
-# 將翻譯後的Markdown轉換為SRT
-python -c "
-from main import create_srt_from_transcription
-with open('transcription.md', 'r', encoding='utf-8') as f:
-    content = f.read()
-create_srt_from_transcription(content, 'transcription.srt')
-"
-
-# 使用ffmpeg嵌入字幕
-./ffmpeg_subtitles_general.sh 影片.mp4 transcription.srt 輸出.mp4
+cli.py all         <網址或檔案>            # 完整流程，最後產出帶字幕的 MP4
+cli.py download    <網址>                 # 下載 YouTube 影片
+cli.py transcribe  <影片>                 # 影片   -> SRT
+cli.py translate   <srt>                  # SRT    -> 繁中 SRT ＋ Markdown
+cli.py embed       <影片> <srt>            # 把字幕燒進影片
+cli.py mp4         <影片>                 # 轉成 MP4（H.264 / AAC）
+cli.py serve       [--port 8713] [--no-browser]
 ```
 
 ### 輸出檔案
 
-- `transcription_original.md` - 原文轉錄（帶時間軸）
-- `transcription_translated.md` - 繁體中文翻譯
-- `transcription_translated.srt` - SRT格式（用於字幕嵌入）
-- `video_with_subtitles.mp4` - 含嵌入字幕的最終影片
+| 檔案 | 內容 |
+|---|---|
+| `<影片名>.srt` | 原文字幕 |
+| `transcription_translated.srt` | 繁體中文字幕 |
+| `transcription_translated.md` | 繁體中文逐字稿 |
+| `transcription_original.md` | 原文逐字稿 |
+| `<影片名>_subtitled.mp4` | 燒好字幕的影片（僅「影片」工作流） |
+
+網頁介面的每次執行都放在 `<output>/webui/<job_id>/`，所以兩次執行不會互相覆蓋。
+
+### 說明與限制
+
+- 目前**只支援 Linux x86_64**。
+- **沒有進度百分比。** whisper 不會回報進度，所以介面只顯示「現在在哪一步」與「已經過多久」——不會編一個假的百分比給你看。
+- **轉錄時間大約等於影片長度**（無硬體加速的機器、使用內建的 `base` 模型）。
+- **關掉瀏覽器分頁不會關掉伺服器。** 再啟動一次只會把頁面重新打開。要真的停掉它，在終端機按 Ctrl+C，或執行 `pkill -f "cli[.]py"`。
+- 影片編碼使用純軟體的 H.264（`libx264`），下載時也會避開 AV1。這兩個都是為「沒有硬體影音加速的機器」所做的取捨。
+- 網頁介面只綁定 `127.0.0.1`。它會讀取你給的本機檔案路徑，所以刻意不開放給區域網路連線。
+
+### 需求（從原始碼執行時）
+
+- Python 3.12
+- `yt-dlp`、`openai-whisper`、`deep-translator`、`flask`
+- `ffmpeg` 需在 PATH 上（`sudo apt install ffmpeg`）
+
+> `requirements.txt` 目前寫的是 `whisper`，那在 PyPI 上是另一個不相干的套件。請照上面裝 `openai-whisper`。
 
 ### 專案結構
 
 ```
 .
-├── main.py                  # 主CLI應用程式
-├── youtube_downloader.py    # YouTube影片下載器
-├── transcription_service.py # 使用Whisper進行影片轉錄
+├── cli.py                   # 子命令層（all/download/transcribe/translate/embed/mp4/serve）
+├── main.py                  # 最初的互動式流程
+├── youtube_downloader.py    # YouTube 下載
+├── transcription_service.py # 轉錄（Whisper）
 ├── translation_service.py   # 繁體中文翻譯
-├── output_formatter.py      # Markdown輸出格式化
-├── video_processor.py       # 影片處理函數
-├── ffmpeg_subtitles.sh      # 專案專用ffmpeg腳本
-├── ffmpeg_subtitles_general.sh # 通用ffmpeg腳本
-├── embed_sub_fast.py        # 快速Python嵌入腳本
-├── embed_sub_simple.py      # 標準Python嵌入腳本
-├── requirements.txt         # Python依賴套件
-├── README.md                # 本檔案
-└── output/                  # 輸出目錄
-    ├── video.mp4           # 下載的影片（包含音頻）
-    ├── transcription.srt    # 原文字幕
-    ├── transcription.md     # 翻譯後的轉錄
-    └── video_with_subtitles.mp4 # 最終輸出
+├── output_formatter.py      # Markdown 格式化
+├── video_processor.py       # 字幕嵌入、MP4 轉換
+├── webui/
+│   ├── server.py            # 本機 Flask 後端
+│   └── static/index.html    # 整個介面，單一自足頁面
+├── build_appimage/build.sh  # 從零建置 AppImage
+├── tests/                   # 回歸測試（不連網、不啟動真的伺服器）
+└── output/                  # 產出結果
 ```
-
-### 品質設定
-
-- **影片**：H.264編碼，CRF 23，slow預設（優良品質）
-- **音頻**：AAC編碼，192kbps
-- **字幕**：繁體中文，與時間軸對齊
 
 ### 疑難排解
 
-1. **找不到ffmpeg**：請使用套件管理員安裝ffmpeg
-2. **超時問題**：對於長影片，請使用bash腳本而非Python腳本
-3. **檔案名稱含特殊字元**：請使用通用腳本
-4. **翻譯錯誤**：請檢查網路連線
-5. **下載的影片沒有音頻**：請更新yt-dlp並確保正確的格式選擇
-6. **影片處理失敗但無錯誤訊息**：請確保輸出檔案被正確覆寫並檢查檔案權限
-7. **字幕顯示混合語言**：請驗證SRT檔案僅包含翻譯後的文字，並重新生成
+1. **找不到 ffmpeg**——用套件管理員安裝。
+2. **`import whisper` 失敗或行為怪異**——裝到錯的 `whisper` 套件了，請改裝 `openai-whisper`。
+3. **再啟動一次沒有反應**——它已經在跑了，程式會把原本的頁面重新打開，而不是再開一個伺服器。
+4. **8713 埠被別的程式佔用**——用 `--port` 指定其他埠。
+5. **翻譯出錯**——檢查網路連線；整條流程只有翻譯這一步需要連網。
+6. **下載的影片沒有聲音**——更新 `yt-dlp`。
+7. **檔名有特殊字元**——工具本身處理得了；但如果你自己呼叫 ffmpeg，記得把路徑加引號。
 
 ### 授權
 
-MIT授權 - 詳見[LICENSE](LICENSE)檔案。
+MIT 授權。
 
 ---
