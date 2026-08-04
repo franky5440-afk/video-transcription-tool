@@ -14,11 +14,11 @@
     --accent: #0071e3;
     --accent-text: #ffffff;
     --accent-hover: #0060c2;
-    --success: #1a7f37;
+    --success: #176c2e;
     --success-bg: #e6f4ea;
     --error: #c0392b;
     --error-bg: #fdecea;
-    --pending: #8a8a8e;
+    --pending: #67676e;
     --pending-bg: #ececec;
     --running: #0071e3;
     --running-bg: #e8f1fc;
@@ -41,7 +41,7 @@
       --success-bg: #113a1e;
       --error: #ff6b5e;
       --error-bg: #3a1613;
-      --pending: #98989d;
+      --pending: #ababb1;
       --pending-bg: #3a3a3c;
       --running: #409cff;
       --running-bg: #123049;
@@ -65,7 +65,11 @@
   main.container {
     max-width: 560px;
     margin: 0 auto;
-    padding: 24px 16px 64px;
+    padding: 32px 16px 64px;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
   }
 
   header.app-header {
@@ -94,6 +98,27 @@
   }
 
   .hidden { display: none !important; }
+
+  svg.icon {
+    width: 20px;
+    height: 20px;
+    flex: none;
+  }
+
+  h2.view-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h2.view-title .icon {
+    width: 26px;
+    height: 26px;
+  }
+
+  h2.view-title .icon-done { color: var(--success); }
+  h2.view-title .icon-error { color: var(--error); }
+  h2.view-title .icon-warn { color: var(--running); }
 
   h2 {
     font-size: 18px;
@@ -138,6 +163,9 @@
   .workflow-btn .wf-title {
     font-weight: 600;
     font-size: 16px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 
   .workflow-btn .wf-desc {
@@ -170,6 +198,12 @@
     display: flex;
     flex-direction: column;
     gap: 12px;
+  }
+
+  label.input-label {
+    font-size: 14px;
+    font-weight: 600;
+    margin-top: 4px;
   }
 
   input#source-input {
@@ -226,6 +260,15 @@
     margin: 0;
   }
 
+  p.source-removed-note {
+    color: var(--pending);
+    background: var(--pending-bg);
+    padding: 10px 12px;
+    border-radius: 8px;
+    font-size: 13px;
+    margin: 16px 0 0;
+  }
+
   p.elapsed-line {
     font-size: 14px;
     color: var(--text-secondary);
@@ -268,6 +311,13 @@
     text-align: center;
   }
 
+  li.step .step-icon svg {
+    width: 18px;
+    height: 18px;
+    display: block;
+    margin: 0 auto;
+  }
+
   li.step .step-status-text {
     font-size: 12px;
     color: var(--text-secondary);
@@ -308,9 +358,17 @@
     to { transform: rotate(360deg); }
   }
 
+  .outputs-heading {
+    font-size: 15px;
+    font-weight: 600;
+    margin: 22px 0 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+  }
+
   ul.outputs-list {
     list-style: none;
-    margin: 16px 0 0;
+    margin: 10px 0 0;
     padding: 0;
     display: flex;
     flex-direction: column;
@@ -324,7 +382,9 @@
     gap: 12px;
     padding: 10px 12px;
     border: 1px solid var(--border);
+    border-left: 3px solid var(--accent);
     border-radius: 8px;
+    background: var(--bg);
     font-size: 14px;
   }
 
@@ -351,6 +411,23 @@
     margin-top: 24px;
   }
 
+  :focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+    border-radius: 6px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .workflow-btn,
+    .primary-btn,
+    .secondary-btn {
+      transition: none;
+    }
+    li.step-running .step-icon {
+      animation-duration: 3s;
+    }
+  }
+
   @media (max-width: 420px) {
     main.container { padding: 16px 12px 48px; }
     .card { padding: 16px; }
@@ -369,11 +446,17 @@
     <h2>你想要什麼結果？</h2>
     <div class="workflow-options">
       <button type="button" class="workflow-btn" data-workflow="video">
-        <span class="wf-title">🎬 我要一支帶繁體中文字幕的影片</span>
+        <span class="wf-title">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 8v8M15 8v8M3 10h6M3 14h6M15 10h6M15 14h6" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          我要一支帶繁體中文字幕的影片
+        </span>
         <span class="wf-desc">看國外遊戲攻略、教學影片，想要能直接看的成品影片。會把翻譯好的字幕燒進影片畫面。</span>
       </button>
       <button type="button" class="workflow-btn" data-workflow="text">
-        <span class="wf-title">📝 我只要這支影片的文字</span>
+        <span class="wf-title">
+          <svg class="icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h12a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 8h6M9 12h6M9 16h4" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>
+          我只要這支影片的文字
+        </span>
         <span class="wf-desc">看訪談、演講，只要逐字稿與翻譯就好。不燒字幕進影片，所以速度明顯較快。</span>
         <span class="wf-badge">較快，不產生影片檔</span>
       </button>
@@ -386,6 +469,7 @@
     <h2 id="input-title">來源</h2>
     <p id="input-hint" class="hint"></p>
     <form id="job-form">
+      <label for="source-input" class="input-label">影片網址或本機檔案的絕對路徑</label>
       <input
         id="source-input"
         type="text"
@@ -395,28 +479,38 @@
       />
       <button type="submit" id="submit-btn" class="primary-btn">開始處理</button>
     </form>
-    <p id="form-error" class="error-text hidden" style="margin-top: 12px;"></p>
+    <p id="form-error" class="error-text hidden" role="alert" style="margin-top: 12px;"></p>
   </section>
 
   <!-- 處理中 -->
   <section id="view-progress" class="card hidden">
     <h2>處理中</h2>
-    <p id="elapsed-line" class="elapsed-line"></p>
+    <p id="elapsed-line" class="elapsed-line" aria-live="polite"></p>
     <ol id="steps-list-progress" class="steps-list"></ol>
   </section>
 
   <!-- 完成 -->
   <section id="view-done" class="card hidden">
-    <h2>✅ 完成了</h2>
+    <h2 class="view-title">
+      <svg class="icon icon-done" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12l3 3 5-6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      完成了
+    </h2>
     <p id="done-summary" class="elapsed-line"></p>
     <ol id="steps-list-done" class="steps-list"></ol>
+    <h3 class="outputs-heading">產物下載</h3>
     <ul id="outputs-list" class="outputs-list"></ul>
+    <p id="source-removed-note" class="source-removed-note hidden">
+      已自動刪除這次下載的暫存影片（為了節省空間）。你的逐字稿與翻譯檔案都完整保留。
+    </p>
     <button type="button" id="reset-btn-done" class="secondary-btn" style="margin-top: 20px;">處理下一支影片</button>
   </section>
 
   <!-- 失敗 -->
   <section id="view-error" class="card hidden">
-    <h2>❌ 發生錯誤</h2>
+    <h2 class="view-title">
+      <svg class="icon icon-error" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 9.5l5 5M14.5 9.5l-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      發生錯誤
+    </h2>
     <p id="error-step-line" class="elapsed-line"></p>
     <p id="error-message" class="error-text"></p>
     <ol id="steps-list-error" class="steps-list" style="margin-top: 16px;"></ol>
@@ -425,7 +519,10 @@
 
   <!-- 409 已有工作在跑 -->
   <section id="view-conflict" class="card hidden">
-    <h2>⏳ 目前有工作在進行中</h2>
+    <h2 class="view-title">
+      <svg class="icon icon-warn" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M12 7v5l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+      目前有工作在進行中
+    </h2>
     <p id="conflict-message" class="error-text"></p>
     <p class="hint" style="margin-top: 12px;">這個工具一次只能處理一支影片。請等它結束後再試一次。</p>
     <button type="button" id="conflict-back-btn" class="secondary-btn" style="margin-top: 8px;">好，我知道了</button>
@@ -433,7 +530,10 @@
 
   <!-- 網路 / 後端連不上 -->
   <section id="view-network-error" class="card hidden">
-    <h2>🔌 連不上後端服務</h2>
+    <h2 class="view-title">
+      <svg class="icon icon-error" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 2v5M15 2v5M7 7h10v3a5 5 0 0 1-1 3l-1 2v5h-6v-5l-1-2a5 5 0 0 1-1-3V7z" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      連不上後端服務
+    </h2>
     <p id="network-error-message" class="error-text"></p>
     <p class="hint" style="margin-top: 12px;">請確認本機的處理服務是否已經啟動，然後再試一次。</p>
     <button type="button" id="network-retry-btn" class="primary-btn" style="margin-top: 8px;">重試</button>
@@ -441,7 +541,9 @@
 
   <footer class="app-footer">
     <p id="benchmark-note">
-      參考：約 40 秒的影片跑「只要文字」約 1 分鐘；一支 8 分鐘的真實影片轉錄約需 7 分鐘。請耐心等候。
+      參考速度：轉錄耗時大約是影片長度的一半——一支 8 分鐘的影片約 4 分鐘。
+      中文影片會跳過翻譯步驟，所以更快；燒字幕進影片則會再多花一些時間。
+      實際時間依機器效能而異，請耐心等候。
     </p>
   </footer>
 </main>
@@ -469,11 +571,11 @@
   };
 
   const STATUS_ICON = {
-    pending: "○",
-    running: "⟳",
-    done: "✓",
-    skipped: "–",
-    error: "✕",
+    pending: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    running: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="28 76" stroke-linecap="round"/></svg>',
+    done: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 13l4 4L19 7" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    skipped: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
+    error: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 8l8 8M16 8l-8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/></svg>',
   };
 
   const STATUS_LABEL = {
@@ -574,7 +676,7 @@
 
       const icon = document.createElement("span");
       icon.className = "step-icon";
-      icon.textContent = STATUS_ICON[s.status] || "?";
+      icon.innerHTML = STATUS_ICON[s.status] || "?";
 
       const label = document.createElement("span");
       label.className = "step-label";
@@ -780,6 +882,9 @@
       li.appendChild(link);
       outputsList.appendChild(li);
     });
+    const removedNote = document.getElementById("source-removed-note");
+    if (job.source_removed) removedNote.classList.remove("hidden");
+    else removedNote.classList.add("hidden");
     showView("view-done");
   }
 

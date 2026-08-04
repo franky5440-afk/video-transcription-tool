@@ -113,6 +113,7 @@ def _public(job: dict) -> dict:
             "steps": [dict(step) for step in job["steps"]],
             "outputs": [dict(item) for item in job["outputs"]],
             "error": job["error"],
+            "source_removed": job["source_removed"],
         }
 
 
@@ -136,7 +137,7 @@ def _run_job(job: dict) -> None:
             # and nothing is written next to the user's own file.
             video_file = os.path.join(job_dir, os.path.basename(source))
             os.symlink(os.path.abspath(source), video_file)
-            _set_step(job, "download", "skipped", "local file, nothing to download")
+            _set_step(job, "download", "skipped", "本機檔案，無需下載")
 
         # --- transcribe -----------------------------------------------------
         _set_step(job, "transcribe", "running")
@@ -213,6 +214,33 @@ def _run_job(job: dict) -> None:
             _add_output(job, "字幕影片", subtitled_video)
             _set_step(job, "embed", "done", os.path.basename(subtitled_video))
 
+        # --- post-success cleanup ---------------------------------------------
+        # P1-4 (handoff 2026-08-05): a Chinese source leaves byte-for-byte
+        # copies of the transcript behind (transcription_translated.*). They are
+        # not listed as outputs on purpose, so delete them now that nothing needs
+        # them anymore (the video workflow's embed step already ran).
+        if already_chinese:
+            for name in ("transcription_translated.srt", "transcription_translated.md"):
+                try:
+                    os.remove(os.path.join(job_dir, name))
+                except OSError:
+                    pass
+
+        # P1-3 (handoff 2026-08-05): a text workflow only needs the words, not
+        # the video. Delete the copy we downloaded, but never the user's own
+        # local file: that one lives in the job dir as a symlink (download was
+        # "skipped"), and deleting it would destroy the user's source.
+        if job["workflow"] == "text":
+            download_step = next((s for s in job["steps"] if s["name"] == "download"), None)
+            if download_step and download_step["status"] == "done" and not os.path.islink(video_file):
+                try:
+                    os.remove(video_file)
+                except OSError:
+                    pass
+                else:
+                    with _lock:
+                        job["source_removed"] = True
+
         with _lock:
             job["status"] = "done"
             job["finished_at"] = time.time()
@@ -274,6 +302,7 @@ def create_job():
                       for name in WORKFLOW_STEPS[workflow]],
             "outputs": [],
             "error": None,
+            "source_removed": False,
             "dir": os.path.join(_output_root(), job_id),
         }
         _jobs[job_id] = job
