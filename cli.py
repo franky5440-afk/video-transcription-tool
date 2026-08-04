@@ -144,8 +144,10 @@ def cmd_mp4(args) -> int:
 def cmd_serve(args) -> int:
     # imported here so the other subcommands keep working without flask
     from webui.server import serve
-    # An unavailable port is reported on stderr with exit 1 by serve() itself;
-    # it never falls back to a different port.
+    # If the port is already serving our own web UI, serve() prints that it is
+    # already running and returns (exit 0). For any other unavailable port,
+    # make_server prints the reason on stderr and exits with status 1; it never
+    # falls back to a different port.
     serve(args.port, open_browser=not args.no_browser, output=args.output)
     return 0
 

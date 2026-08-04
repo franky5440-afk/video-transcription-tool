@@ -32,6 +32,7 @@ import time
 import uuid
 import webbrowser
 from urllib.parse import quote
+from urllib.request import urlopen
 
 from flask import Flask, jsonify, request, send_file
 from werkzeug.serving import make_server
@@ -51,6 +52,10 @@ WORKFLOW_STEPS = {
 }
 
 app = Flask(__name__)
+
+# Module constant: the test suite references it, so it must not be a bare
+# string literal embedded only inside _is_our_server().
+OUR_TITLE_MARKER = "<title>影片轉錄工具</title>"
 
 _lock = threading.Lock()
 _jobs = {}
@@ -282,6 +287,22 @@ def get_file(job_id, filename):
     return send_file(target, as_attachment=True)
 
 
+def _is_our_server(port: int, timeout: float = 2.0) -> bool:
+    """在 127.0.0.1:<port> 上的，是不是已經在跑的本工具 web UI。
+
+    只有明確證實時才回 True（E4）。任何錯誤、逾時、無法判定一律回 False（E7）。
+    本函式不得拋出例外。
+    """
+    try:
+        with urlopen(f"http://{HOST}:{port}/", timeout=timeout) as resp:
+            if resp.status != 200:
+                return False
+            body = resp.read().decode("utf-8", errors="ignore")
+            return OUR_TITLE_MARKER in body
+    except Exception:
+        return False
+
+
 def serve(port: int, open_browser: bool = True, output: str = "./output") -> None:
     """
     Run the web UI server until interrupted.
@@ -295,6 +316,12 @@ def serve(port: int, open_browser: bool = True, output: str = "./output") -> Non
     """
     global _output_base
     _output_base = output
+    if _is_our_server(port):
+        url = f"http://{HOST}:{port}/"
+        print(f"Web UI is already running on {url}")
+        if open_browser:
+            webbrowser.open(url)
+        return
     # S1/S3: bound to 127.0.0.1, no debug mode, no reloader.
     server = make_server(HOST, port, app, threaded=True)
     url = f"http://{HOST}:{port}/"
