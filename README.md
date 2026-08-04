@@ -40,7 +40,7 @@ git clone https://github.com/franky5440-afk/video-transcription-tool.git
 cd video-transcription-tool
 
 python3 -m venv venv
-venv/bin/pip install yt-dlp openai-whisper deep-translator flask
+venv/bin/pip install -r requirements.txt
 
 # fetch the whisper "base" model once; the build bundles it
 venv/bin/python -c "import whisper; whisper.load_model('base')"
@@ -98,10 +98,8 @@ Web UI runs keep everything in `<output>/webui/<job_id>/`, so two runs can never
 ### Requirements (running from source)
 
 - Python 3.12
-- `yt-dlp`, `openai-whisper`, `deep-translator`, `flask`
+- `yt-dlp`, `openai-whisper`, `deep-translator`, `flask` (all in `requirements.txt`)
 - `ffmpeg` on your PATH (`sudo apt install ffmpeg`)
-
-> `requirements.txt` currently lists `whisper`, which is an unrelated package on PyPI. Install `openai-whisper` as shown above.
 
 ### Project structure
 
@@ -134,7 +132,7 @@ Web UI runs keep everything in `<output>/webui/<job_id>/`, so two runs can never
 
 ### License
 
-MIT License.
+MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -171,7 +169,7 @@ git clone https://github.com/franky5440-afk/video-transcription-tool.git
 cd video-transcription-tool
 
 python3 -m venv venv
-venv/bin/pip install yt-dlp openai-whisper deep-translator flask
+venv/bin/pip install -r requirements.txt
 
 # 先抓一次 whisper 的 base 模型，打包時會一起包進去
 venv/bin/python -c "import whisper; whisper.load_model('base')"
@@ -229,10 +227,8 @@ cli.py serve       [--port 8713] [--no-browser]
 ### 需求（從原始碼執行時）
 
 - Python 3.12
-- `yt-dlp`、`openai-whisper`、`deep-translator`、`flask`
+- `yt-dlp`、`openai-whisper`、`deep-translator`、`flask`（都在 `requirements.txt` 裡）
 - `ffmpeg` 需在 PATH 上（`sudo apt install ffmpeg`）
-
-> `requirements.txt` 目前寫的是 `whisper`，那在 PyPI 上是另一個不相干的套件。請照上面裝 `openai-whisper`。
 
 ### 專案結構
 
@@ -265,6 +261,6 @@ cli.py serve       [--port 8713] [--no-browser]
 
 ### 授權
 
-MIT 授權。
+MIT 授權 - 詳見 [LICENSE](LICENSE) 檔案。
 
 ---
