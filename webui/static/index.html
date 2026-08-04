@@ -552,15 +552,6 @@
 (function () {
   "use strict";
 
-  // ============================================================
-  // MOCK 開關 —— 交付時必須是 false。
-  // 開啟後可用以下方式在瀏覽器裡實際跑過每一種畫面（不需要後端）：
-  //   - 一般 https:// 網址              → 正常跑完全部步驟 → done
-  //   - 不是 http(s) 開頭的路徑（本機檔案）→ download 這步會是 skipped
-  //   - 來源文字包含 "ERROR"             → translate 這步會失敗 → error 畫面
-  //   - 來源文字包含 "409TEST"           → 送出時直接模擬 409（已有工作在跑）
-  // ============================================================
-  const MOCK = false;
 
   const STEP_LABELS = {
     download: "下載影片",
@@ -911,9 +902,8 @@
   resetBtnDone.addEventListener("click", resetToSelect);
   resetBtnError.addEventListener("click", resetToSelect);
 
-  // ---------------- Real API ----------------
+  // ---------------- API ----------------
   async function apiPostJob(workflow, source) {
-    if (MOCK) return mockPostJob(workflow, source);
     let res;
     try {
       res = await fetch("/api/jobs", {
@@ -937,7 +927,6 @@
   }
 
   async function apiGetJob(jobId) {
-    if (MOCK) return mockGetJob(jobId);
     let res;
     try {
       res = await fetch("/api/jobs/" + encodeURIComponent(jobId));
@@ -955,135 +944,6 @@
     throw new ApiError("unknown", data.error || "伺服器錯誤（" + res.status + "）");
   }
 
-  // ============================================================
-  // MOCK 實作 —— 僅在 MOCK === true 時使用，交付版不會執行到這裡。
-  // 狀態是「送出時間 + 目前時間」的純函式，跟真正輪詢後端的行為一致：
-  // 每次呼叫都根據經過的秒數重新算出目前每一步的狀態。
-  // ============================================================
-  const MOCK_JOBS = {};
-
-  function mockUuid() {
-    return "mock-" + Math.random().toString(36).slice(2) + "-" + Date.now().toString(36);
-  }
-
-  function mockPostJob(workflow, source) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        if (/409TEST/i.test(source)) {
-          reject(new ApiError("conflict", "目前有工作在進行中，請等它結束後再試。（模擬 409）"));
-          return;
-        }
-        const jobId = mockUuid();
-        const isLocal = !/^https?:\/\//i.test(source);
-        const hasError = /ERROR/i.test(source);
-        const names =
-          workflow === "video"
-            ? ["download", "transcribe", "translate", "format", "embed"]
-            : ["download", "transcribe", "translate", "format"];
-        MOCK_JOBS[jobId] = {
-          job_id: jobId,
-          workflow: workflow,
-          source: source,
-          started_at: Date.now() / 1000,
-          names: names,
-          isLocal: isLocal,
-          errorStep: hasError ? "translate" : null,
-          durations: { download: 3, transcribe: 4, translate: 3, format: 2, embed: 5 },
-        };
-        resolve({ job_id: jobId });
-      }, 250);
-    });
-  }
-
-  function mockGetJob(jobId) {
-    return new Promise((resolve, reject) => {
-      setTimeout(() => {
-        const def = MOCK_JOBS[jobId];
-        if (!def) {
-          reject(new ApiError("notfound", "找不到這個工作。"));
-          return;
-        }
-        resolve(mockComputeJobState(def));
-      }, 150);
-    });
-  }
-
-  function mockOutputs(workflow) {
-    const base = [
-      { label: "原文 SRT", filename: "original.srt", url: "/api/download/mock/original.srt", bytes: 8214 },
-      { label: "翻譯 SRT", filename: "translated.srt", url: "/api/download/mock/translated.srt", bytes: 9033 },
-      { label: "翻譯 Markdown", filename: "translated.md", url: "/api/download/mock/translated.md", bytes: 15320 },
-      { label: "原文 Markdown", filename: "original.md", url: "/api/download/mock/original.md", bytes: 14210 },
-    ];
-    if (workflow === "video") {
-      base.push({ label: "字幕影片", filename: "output.mp4", url: "/api/download/mock/output.mp4", bytes: 48213120 });
-    }
-    return base;
-  }
-
-  function mockComputeJobState(def) {
-    const now = Date.now() / 1000;
-    const elapsed = now - def.started_at;
-    let cursor = 0;
-    const steps = [];
-    let overallStatus = "running";
-    let finishedAt = null;
-    let errorMsg = null;
-    let stopped = false;
-
-    for (const name of def.names) {
-      if (stopped) {
-        steps.push({ name: name, status: "pending", detail: "" });
-        continue;
-      }
-      if (name === "download" && def.isLocal) {
-        steps.push({ name: name, status: "skipped", detail: "本機檔案，略過下載" });
-        continue;
-      }
-      const dur = def.durations[name];
-      if (name === def.errorStep) {
-        const errAt = cursor + Math.min(1, dur);
-        if (elapsed < cursor) {
-          steps.push({ name: name, status: "pending", detail: "" });
-        } else if (elapsed < errAt) {
-          steps.push({ name: name, status: "running", detail: "" });
-        } else {
-          steps.push({ name: name, status: "error", detail: "翻譯服務逾時（模擬）" });
-          overallStatus = "error";
-          finishedAt = def.started_at + errAt;
-          errorMsg = "翻譯步驟逾時失敗（這是 MOCK 模式產生的測試錯誤）";
-          stopped = true;
-        }
-        cursor += dur;
-        continue;
-      }
-      if (elapsed < cursor) {
-        steps.push({ name: name, status: "pending", detail: "" });
-      } else if (elapsed < cursor + dur) {
-        steps.push({ name: name, status: "running", detail: "" });
-      } else {
-        steps.push({ name: name, status: "done", detail: "" });
-      }
-      cursor += dur;
-    }
-
-    if (!stopped && steps.every((s) => s.status === "done" || s.status === "skipped")) {
-      overallStatus = "done";
-      finishedAt = def.started_at + cursor;
-    }
-
-    return {
-      job_id: def.job_id,
-      workflow: def.workflow,
-      source: def.source,
-      status: overallStatus,
-      started_at: def.started_at,
-      finished_at: finishedAt,
-      steps: steps,
-      outputs: overallStatus === "done" ? mockOutputs(def.workflow) : [],
-      error: errorMsg,
-    };
-  }
 })();
 </script>
 </body>
