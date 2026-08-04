@@ -169,7 +169,21 @@ echo "== AppDir staged, size: =="
 du -sh "$APPDIR"
 
 echo "== packaging AppImage =="
+# appimagetool exits 0 even when mksquashfs underneath it fails, so set -e
+# cannot catch it. That happened on 2026-08-05: a running instance of the
+# previous build held the destination open ("Text file busy"), packaging
+# failed, and the script still reported success while leaving the old artifact
+# in place -- which then looks like "my change did not take effect". Compare
+# the timestamp instead of trusting the exit status.
+mtime_before="$([ -f "$OUT" ] && stat -c %Y "$OUT" || echo 0)"
 ARCH=x86_64 "$TOOLS/squashfs-root/AppRun" "$APPDIR" "$OUT"
+mtime_after="$([ -f "$OUT" ] && stat -c %Y "$OUT" || echo 0)"
+if [ "$mtime_after" = "$mtime_before" ]; then
+  echo "ERROR: appimagetool reported success but did not write $OUT." >&2
+  echo "       If it said 'Text file busy', a previous build is still running:" >&2
+  echo "       find it with 'ss -ltnp | grep 8713' and kill that PID." >&2
+  exit 1
+fi
 
 echo "== done =="
 ls -lh "$OUT"
