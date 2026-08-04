@@ -198,7 +198,12 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main() -> None:
-    args = build_parser().parse_args()
+    argv = sys.argv[1:]
+    if not argv:
+        # No arguments at all (e.g. double-clicking the AppImage): default to
+        # `serve` so the web UI opens instead of argparse erroring out.
+        argv = ["serve"]
+    args = build_parser().parse_args(argv)
     sys.exit(args.func(args))
 
 
