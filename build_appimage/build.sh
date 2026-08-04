@@ -113,6 +113,10 @@ for m in $MODULES cli.py; do
   cp "$ROOT/$m" "$APPDIR/app/"
 done
 
+echo "== bundling the webui package =="
+cp -r "$ROOT/webui" "$APPDIR/app/webui"
+rm -rf "$APPDIR/app/webui/__pycache__"
+
 echo "== bundling yt-dlp CLI (rewrite shebang to bundled python) =="
 cp "$VENV/bin/yt-dlp" "$APPDIR/usr/bin/yt-dlp"
 sed -i '1c #!/usr/bin/env python3.12' "$APPDIR/usr/bin/yt-dlp"

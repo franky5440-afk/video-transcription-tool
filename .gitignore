@@ -38,3 +38,7 @@ build_appimage/tools/
 build_appimage/clips/
 build_appimage/testout/
 build_appimage/testout_all/
+build_appimage/verify_extract/
+build_appimage/testout_webui/
+build_appimage/build.log
+build_appimage/serve.log
