@@ -75,6 +75,17 @@ The GitHub Pages deployment is static — it cannot run Whisper or ffmpeg. When 
 
 Security: CORS is granted to exactly one origin (`https://franky5440-afk.github.io`); no other website can talk to your local backend, and jobs still require `Content-Type: application/json`, so plain HTML form posts from any site are rejected. Your files stay on your disk.
 
+### Why the backend runs on your machine instead of in the cloud
+
+We did evaluate putting a real backend online so the public page would need nothing installed. It lost on practicality:
+
+- **Whisper is heavy.** Transcription takes roughly as long as the video itself and wants about 1 GB of RAM. Free tiers don't fit it (Render's free plan caps at 512 MB); the ones that do fit bill every month (Fly.io ≈ $3–6/mo, Railway ≈ $10–20/mo).
+- **Datacenter IPs get blocked by YouTube.** `yt-dlp` from cloud hosts constantly trips "confirm you're not a bot" checks; from a home connection it just works.
+- **Free compute means sleeping and queueing.** The strongest free option (Hugging Face Spaces, 2 vCPU / 16 GB) sleeps when idle, adds 1–2 minute cold starts, and queues concurrent jobs — impractical for a tool you use occasionally but want *now*.
+- **Privacy is the feature, not a bonus.** In this design your video never leaves your disk; a hosted backend would require uploading every file it processes.
+
+So the trade we chose: one public URL anyone can open, while the heavy lifting stays on the machine that owns the files.
+
 ### Command line
 
 Every subcommand takes `--output` and defaults to `./output`. Running the tool with no subcommand at all starts the web UI.
@@ -220,6 +231,17 @@ GitHub Pages 是靜態空間，跑不動 Whisper 與 ffmpeg。打開公開網址
 - **偵測不到後端** → 頁面顯示簡短的安裝指引並持續自動重試；執行 `cli.py serve` 之後就會自動連上。
 
 安全設計：CORS 只允許唯一來源 `https://franky5440-afk.github.io`，其他任何網站都無法與你的本機後端溝通；送出任務仍然必須帶 `Content-Type: application/json`，所以任何網站的純 HTML 表單都會被拒絕。你的檔案只留在你的磁碟上。
+
+### 為什麼後端放在你自己的電腦，而不是雲端
+
+我們確實評估過「架一個真正的雲端後端，讓公開頁面什麼都不用裝」這條路，最後因為實用性不足而放棄：
+
+- **whisper 很吃資源。** 轉錄時間大約等於影片長度，需要約 1GB RAM。免費層裝不下（Render 免費版上限 512MB）；裝得下的每個月都要錢（Fly.io 約 $3–6/月、Railway 約 $10–20/月）。
+- **資料中心 IP 會被 YouTube 擋。** 從雲端主機跑 `yt-dlp` 動不動就被要求「確認你不是機器人」；從家裡的網路就是能直接動。
+- **免費算力等於休眠與排隊。** 最強的免費選項（Hugging Face Spaces，2 vCPU / 16GB）閒置會休眠、冷啟動多等 1–2 分鐘、同時來的工作要排隊——對一個「偶爾用、但要用就要馬上動」的工具來說不實用。
+- **隱私是功能本身，不是附加價值。** 目前的設計裡影片永遠不離開你的磁碟；改成雲端後端就變成每支影片都要先上傳。
+
+所以我們做的取捨是：給你一個任何人都能打開的公開網址，重活兒則留在檔案所在的那台機器上。
 
 ### 命令列
 
