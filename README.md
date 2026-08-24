@@ -7,7 +7,12 @@ Turn a YouTube link or a local video into a Traditional Chinese transcript — a
 
 ---
 
-## Only available in Linux, expecting Mac OS shortly
+## Public web UI available on every platform · 公開網頁版已上線
+
+Open **https://franky5440-afk.github.io/video-transcription-tool/** in any browser.
+The page itself is only an interface — download, transcription and translation all run on *your* machine through the local backend; nothing is ever uploaded. The AppImage below is still Linux-only for now.
+
+---
 
 ## English
 
@@ -15,7 +20,8 @@ Turn a YouTube link or a local video into a Traditional Chinese transcript — a
 
 Two ways to use it, both driving the same pipeline:
 
-- **Web UI** — the normal way. Double-click the AppImage and a local page opens in your browser. Nothing is uploaded anywhere; everything runs on your own machine.
+- **Public web UI** — open https://franky5440-afk.github.io/video-transcription-tool/ anywhere (Windows, macOS, Linux, any browser). It auto-detects a backend running on `127.0.0.1:8713`; if none is found it walks you through starting one. Files never leave your machine.
+- **Local web UI** — double-click the AppImage and the same page opens locally. Nothing is uploaded anywhere; everything runs on your own machine.
 - **Command line** — seven subcommands, for scripting or for running one step at a time.
 
 ### The two workflows
@@ -59,6 +65,15 @@ The build downloads a CPU-only PyTorch wheel, a static ffmpeg and appimagetool i
 ```bash
 venv/bin/python cli.py serve      # web UI, same as double-clicking the AppImage
 ```
+
+### How the public page talks to your machine
+
+The GitHub Pages deployment is static — it cannot run Whisper or ffmpeg. When you open the public URL, the page probes `http://127.0.0.1:8713/api/health` every few seconds:
+
+- **Backend running** → the page works exactly like the local one (same two workflows, same outputs).
+- **Backend not found** → the page shows a short setup guide and keeps retrying; start `cli.py serve` and it connects automatically.
+
+Security: CORS is granted to exactly one origin (`https://franky5440-afk.github.io`); no other website can talk to your local backend, and jobs still require `Content-Type: application/json`, so plain HTML form posts from any site are rejected. Your files stay on your disk.
 
 ### Command line
 
@@ -113,8 +128,10 @@ Web UI runs keep everything in `<output>/webui/<job_id>/`, so two runs can never
 ├── output_formatter.py      # Markdown formatting
 ├── video_processor.py       # subtitle embedding, MP4 conversion
 ├── webui/
-│   ├── server.py            # local Flask backend
+│   ├── server.py            # local Flask backend (CORS: Pages origin only)
 │   └── static/index.html    # the whole UI, one self-contained page
+├── .github/workflows/
+│   └── deploy-pages.yml     # deploys webui/static to GitHub Pages on push
 ├── build_appimage/build.sh  # builds the AppImage from scratch
 ├── tests/                   # regression tests (no network, no real server)
 └── output/                  # results
@@ -136,15 +153,21 @@ Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ---
 
-## 目前只有Linux版本，Mac OS版本開發中
+## 公開網頁版已上線，任何平台都能開
+
+打開 **https://franky5440-afk.github.io/video-transcription-tool/** 就能使用。
+這個網頁只是操作介面——下載、轉錄、翻譯全部在你自己的電腦上由本機後端執行，檔案不會上傳到任何地方。下面的 AppImage 目前仍然只支援 Linux。
+
+---
 
 ## 繁體中文
 
 ### 這個工具做什麼
 
-把 YouTube 影片或本機影片轉成繁體中文逐字稿；需要的話，還能把字幕直接燒進影片裡。兩種使用方式，跑的是同一條流程：
+把 YouTube 影片或本機影片轉成繁體中文逐字稿；需要的話，還能把字幕直接燒進影片裡。三種使用方式，跑的是同一條流程：
 
-- **網頁介面**——一般用法。雙擊 AppImage，瀏覽器就會打開一個本機頁面。**檔案不會上傳到任何地方**，全部在你自己的電腦上處理。
+- **公開網頁版**——在任何平台的瀏覽器打開 https://franky5440-afk.github.io/video-transcription-tool/。頁面會自動偵測你電腦上 `127.0.0.1:8713` 的後端；沒偵測到就引導你啟動。檔案永遠留在你的機器上。
+- **本機網頁介面**——雙擊 AppImage，同樣的頁面會在本機打開。**檔案不會上傳到任何地方**，全部在你自己的電腦上處理。
 - **命令列**——七個子命令，適合寫腳本或單獨執行某一步。
 
 ### 兩條工作流
@@ -188,6 +211,15 @@ venv/bin/python -c "import whisper; whisper.load_model('base')"
 ```bash
 venv/bin/python cli.py serve      # 網頁介面，與雙擊 AppImage 相同
 ```
+
+### 公開頁面怎麼連上你的電腦
+
+GitHub Pages 是靜態空間，跑不動 Whisper 與 ffmpeg。打開公開網址時，頁面會每幾秒探測一次 `http://127.0.0.1:8713/api/health`：
+
+- **後端已在跑** → 頁面行為與本機版完全相同（同樣兩條工作流、同樣的產物）。
+- **偵測不到後端** → 頁面顯示簡短的安裝指引並持續自動重試；執行 `cli.py serve` 之後就會自動連上。
+
+安全設計：CORS 只允許唯一來源 `https://franky5440-afk.github.io`，其他任何網站都無法與你的本機後端溝通；送出任務仍然必須帶 `Content-Type: application/json`，所以任何網站的純 HTML 表單都會被拒絕。你的檔案只留在你的磁碟上。
 
 ### 命令列
 
@@ -242,8 +274,10 @@ cli.py serve       [--port 8713] [--no-browser]
 ├── output_formatter.py      # Markdown 格式化
 ├── video_processor.py       # 字幕嵌入、MP4 轉換
 ├── webui/
-│   ├── server.py            # 本機 Flask 後端
+│   ├── server.py            # 本機 Flask 後端（CORS 僅允許 Pages 來源）
 │   └── static/index.html    # 整個介面，單一自足頁面
+├── .github/workflows/
+│   └── deploy-pages.yml     # push 時把 webui/static 部署到 GitHub Pages
 ├── build_appimage/build.sh  # 從零建置 AppImage
 ├── tests/                   # 回歸測試（不連網、不啟動真的伺服器）
 └── output/                  # 產出結果

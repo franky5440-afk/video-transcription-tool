@@ -24,6 +24,9 @@ Design constraints implemented here:
     S2: /api/files/ resolves the requested path with os.path.realpath and
         serves it only when it really is inside that job's output directory
     S3: no debug mode, no reloader
+    S4: CORS is granted to exactly one origin — the GitHub Pages deployment
+        of this same UI (PAGES_ORIGIN below) — so the public page can talk
+        to this localhost backend; every other origin is ignored
 """
 
 import os
@@ -57,6 +60,42 @@ app = Flask(__name__)
 # Module constant: the test suite references it, so it must not be a bare
 # string literal embedded only inside _is_our_server().
 OUR_TITLE_MARKER = "<title>影片轉錄工具</title>"
+
+# S4: the only cross-origin client allowed is the GitHub Pages deployment of
+# this same UI. Exact string match on the Origin header; everything else
+# (including other *.github.io sites and null origins from file://) is denied.
+# The Content-Type: application/json requirement in create_job() still stands,
+# so a plain HTML form can never start a job even from the allowed origin.
+PAGES_ORIGIN = "https://franky5440-afk.github.io"
+
+
+@app.after_request
+def _allow_pages_origin(response):
+    if request.headers.get("Origin") == PAGES_ORIGIN:
+        response.headers["Access-Control-Allow-Origin"] = PAGES_ORIGIN
+        response.headers["Vary"] = "Origin"
+    return response
+
+
+@app.before_request
+def _api_preflight():
+    # Answer CORS preflights here instead of in a route: Werkzeug's automatic
+    # OPTIONS response wins over a generic "/api/<path>" rule (measured via
+    # curl 2026-08-24), and a browser needs the explicit Allow-* headers to
+    # accept the JSON POST.
+    # Chrome's Private Network Access sends a preflight for public -> local
+    # requests; answering its extra header now avoids breakage once enforced.
+    if request.method != "OPTIONS" or not request.path.startswith("/api/"):
+        return None
+    resp = app.make_default_options_response()
+    if request.headers.get("Origin") == PAGES_ORIGIN:
+        resp.headers["Access-Control-Allow-Origin"] = PAGES_ORIGIN
+        resp.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+        resp.headers["Access-Control-Max-Age"] = "600"
+        if "Access-Control-Request-Private-Network" in request.headers:
+            resp.headers["Access-Control-Allow-Private-Network"] = "true"
+    return resp
 
 _lock = threading.Lock()
 _jobs = {}
