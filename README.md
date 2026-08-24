@@ -132,7 +132,7 @@ Web UI runs keep everything in `<output>/webui/<job_id>/`, so two runs can never
 
 ### License
 
-MIT License - See [LICENSE](LICENSE) for details.
+Apache License 2.0 - See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -261,6 +261,6 @@ cli.py serve       [--port 8713] [--no-browser]
 
 ### 授權
 
-MIT 授權 - 詳見 [LICENSE](LICENSE) 檔案。
+Apache License 2.0 - 詳見 [LICENSE](LICENSE) 檔案。
 
 ---
